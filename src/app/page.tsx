@@ -15,23 +15,6 @@ import {
   Loader2,
 } from "lucide-react";
 
-// More flexible header mapping
-const headerMapping: { [key: string]: keyof PlateData } = {
-  "Image URL": "Image URL",
-  "imageurl": "Image URL",
-  "image url": "Image URL",
-  "License Plate": "License Plate",
-  "licenseplate": "License Plate",
-  "license plate": "License Plate",
-  "plate number": "License Plate",
-  "platenumber": "License Plate",
-  "Make": "Make",
-  "make": "Make",
-  "Model": "Model",
-  "model": "Model",
-  "Year": "Year",
-  "year": "Year",
-};
 
 export default function PlateGalleryPage() {
   const [data, setData] = useState<PlateData[]>([]);
@@ -52,60 +35,35 @@ export default function PlateGalleryPage() {
         const sheetName = workbook.SheetNames[0];
         const worksheet = workbook.Sheets[sheetName];
         
-        const rawData: any[][] = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
-        if (rawData.length < 1) {
-          throw new Error("The uploaded file is empty or has no header row.");
-        }
-        
-        const rawHeaders = rawData[0];
-        const normalizedHeaders = rawHeaders.map(h => h.toString().trim().toLowerCase());
+        const urls: string[] = [];
+        const jsonData: any[][] = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
 
-        const columnMap: { [key: string]: string } = {};
-        const foundHeaders = new Set<string>();
+        // Regular expression to find URLs in cell content
+        const urlRegex = /(https?:\/\/[^\s]+)/g;
 
-        normalizedHeaders.forEach((nh, index) => {
-            const mappedKey = headerMapping[nh];
-            if (mappedKey) {
-                columnMap[rawHeaders[index]] = mappedKey;
-                foundHeaders.add(mappedKey);
+        jsonData.forEach(row => {
+          row.forEach(cell => {
+            if (typeof cell === 'string') {
+              const found = cell.match(urlRegex);
+              if (found) {
+                urls.push(...found);
+              }
             }
+          });
         });
-        
-        const requiredColumns: (keyof PlateData)[] = ["Image URL"];
-        const missingColumns = requiredColumns.filter(col => !foundHeaders.has(col));
 
-        if (missingColumns.length > 0) {
-          throw new Error(`The "Image URL" column is required. Please check your file headers.`);
+        if (urls.length === 0) {
+          throw new Error("No image URLs found in the uploaded file.");
         }
 
-        const jsonData = XLSX.utils.sheet_to_json<any>(worksheet);
-
-        const formattedData: PlateData[] = jsonData.map((row, index) => {
-          const newRow: Partial<PlateData> = { id: `${file.name}-${index}` };
-          for(const originalHeader in row) {
-            const mappedHeader = columnMap[originalHeader.trim()];
-            if(mappedHeader) {
-              newRow[mappedHeader] = row[originalHeader]?.toString() || "";
-            }
-          }
-          
-          if (!newRow["Image URL"]) {
-            return null;
-          }
-
-          return {
-            id: newRow.id!,
-            "Image URL": newRow["Image URL"] || "",
-            "License Plate": newRow["License Plate"] || "N/A",
-            Make: newRow["Make"] || "N/A",
-            Model: newRow["Model"] || "N/A",
-            Year: newRow["Year"] || "N/A",
-          };
-        }).filter(Boolean) as PlateData[];
-
-        if (formattedData.length === 0) {
-            throw new Error("No valid image URLs found in the file.");
-        }
+        const formattedData: PlateData[] = urls.map((url, index) => ({
+          id: `${file.name}-${index}`,
+          "Image URL": url,
+          "License Plate": "N/A",
+          Make: "N/A",
+          Model: "N/A",
+          Year: "N/A",
+        }));
 
         setData(formattedData);
         toast({
@@ -117,7 +75,7 @@ export default function PlateGalleryPage() {
         toast({
           variant: "destructive",
           title: "File Upload Error",
-          description: error.message || "Could not parse the uploaded file. Please check the format and headers.",
+          description: error.message || "Could not parse the uploaded file.",
         });
         setData([]);
       } finally {
@@ -151,8 +109,7 @@ export default function PlateGalleryPage() {
             />
           </div>
           <div className="p-3 bg-card text-center">
-            <p className="font-bold text-lg">{item["License Plate"]}</p>
-            <p className="text-sm text-muted-foreground">{`${item.Make} ${item.Model} (${item.Year})`}</p>
+            <p className="font-bold text-lg truncate">{item["Image URL"]}</p>
           </div>
         </Card>
       ))}
@@ -165,7 +122,7 @@ export default function PlateGalleryPage() {
         <header className="mb-8 text-center">
           <h1 className="text-4xl font-bold text-primary">Image Viewer</h1>
           <p className="text-muted-foreground mt-2">
-            Upload a spreadsheet to display images from URLs.
+            Upload a spreadsheet to display images from any URL found in the file.
           </p>
         </header>
 
@@ -212,7 +169,6 @@ export default function PlateGalleryPage() {
                 <FileSpreadsheet className="h-16 w-16 text-muted-foreground mb-4" />
                 <h3 className="text-xl font-semibold">No Images to Display</h3>
                 <p className="text-muted-foreground mt-2">Upload a file to get started.</p>
-                <p className="text-sm text-muted-foreground mt-1">Your file must contain an 'Image URL' column.</p>
              </Card>
           )}
           {!isLoading && data.length > 0 && renderGrid()}
