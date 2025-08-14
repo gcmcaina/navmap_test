@@ -39,6 +39,24 @@ type SortConfig = {
   direction: "ascending" | "descending";
 };
 
+// More flexible header mapping
+const headerMapping: { [key: string]: keyof PlateData } = {
+  "Image URL": "Image URL",
+  "imageurl": "Image URL",
+  "image url": "Image URL",
+  "License Plate": "License Plate",
+  "licenseplate": "License Plate",
+  "license plate": "License Plate",
+  "plate number": "License Plate",
+  "platenumber": "License Plate",
+  "Make": "Make",
+  "make": "Make",
+  "Model": "Model",
+  "model": "Model",
+  "Year": "Year",
+  "year": "Year",
+};
+
 export default function PlateGalleryPage() {
   const [data, setData] = useState<PlateData[]>([]);
   const [view, setView] = useState<"grid" | "table">("grid");
@@ -65,34 +83,51 @@ export default function PlateGalleryPage() {
         const sheetName = workbook.SheetNames[0];
         const worksheet = workbook.Sheets[sheetName];
         
-        const jsonData = XLSX.utils.sheet_to_json<any>(worksheet, {
-          defval: "",
-          transform: (value, header) => header.trim(),
+        const rawData: any[][] = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+        if (rawData.length < 1) {
+          throw new Error("The uploaded file is empty or has no header row.");
+        }
+        
+        const rawHeaders = rawData[0];
+        const normalizedHeaders = rawHeaders.map(h => h.toString().trim().toLowerCase());
+
+        const columnMap: { [key: string]: string } = {};
+        const foundHeaders = new Set<string>();
+
+        normalizedHeaders.forEach((nh, index) => {
+            const mappedKey = headerMapping[nh];
+            if (mappedKey) {
+                columnMap[rawHeaders[index]] = mappedKey;
+                foundHeaders.add(mappedKey);
+            }
         });
         
-        const rawHeaders: string[][] = XLSX.utils.sheet_to_json(worksheet, { header: 1 })[0] as any;
-        const headers = rawHeaders.map(h => h.trim());
-
-        const requiredColumns = ["Image URL", "License Plate", "Make", "Model", "Year"];
-        const missingColumns = requiredColumns.filter(col => !headers.includes(col));
+        const requiredColumns: (keyof PlateData)[] = ["Image URL", "License Plate", "Make", "Model", "Year"];
+        const missingColumns = requiredColumns.filter(col => !foundHeaders.has(col));
 
         if (missingColumns.length > 0) {
-          throw new Error(`Missing columns: ${missingColumns.join(', ')}`);
+          throw new Error(`Missing columns: ${missingColumns.join(', ')}. Please check your file headers.`);
         }
 
+        const jsonData = XLSX.utils.sheet_to_json<any>(worksheet);
+
         const formattedData: PlateData[] = jsonData.map((row, index) => {
-          const newRow: { [key: string]: any } = {};
-          for (const key in row) {
-            newRow[key.trim()] = row[key];
+          const newRow: Partial<PlateData> = { id: `${file.name}-${index}` };
+          for(const originalHeader in row) {
+            const mappedHeader = columnMap[originalHeader.trim()];
+            if(mappedHeader) {
+              newRow[mappedHeader] = row[originalHeader]?.toString() || "";
+            }
           }
+          
           return {
-            id: `${file.name}-${index}`,
-            "Image URL": newRow["Image URL"]?.toString() || "",
-            "License Plate": newRow["License Plate"]?.toString() || "",
-            Make: newRow["Make"]?.toString() || "",
-            Model: newRow["Model"]?.toString() || "",
-            Year: newRow["Year"]?.toString() || "",
-          }
+            id: newRow.id!,
+            "Image URL": newRow["Image URL"] || "",
+            "License Plate": newRow["License Plate"] || "",
+            Make: newRow["Make"] || "",
+            Model: newRow["Model"] || "",
+            Year: newRow["Year"] || "",
+          };
         });
 
         setData(formattedData);
@@ -105,7 +140,7 @@ export default function PlateGalleryPage() {
         toast({
           variant: "destructive",
           title: "File Upload Error",
-          description: error.message || "Could not parse the uploaded file. Please check the format.",
+          description: error.message || "Could not parse the uploaded file. Please check the format and headers.",
         });
         setData([]);
       } finally {
