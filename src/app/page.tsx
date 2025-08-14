@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useRef, MouseEvent, useEffect } from "react";
+import { useState, useRef } from "react";
 import * as XLSX from "xlsx";
 import Image from "next/image";
 import type { PlateData } from "@/types";
@@ -53,7 +53,6 @@ export default function PlateGalleryPage() {
           throw new Error("The spreadsheet is empty.");
         }
 
-        // Find header mapping
         const header = Object.keys(jsonData[0]);
         const imageUrlKey = header.find(h => h.trim().toLowerCase() === "url da imagem");
         const licensePlateKey = header.find(h => h.trim().toLowerCase() === "placa");
@@ -62,7 +61,7 @@ export default function PlateGalleryPage() {
         if (!imageUrlKey) {
             throw new Error("Column 'URL da imagem' not found in the spreadsheet.");
         }
-
+        
         const formattedData: PlateData[] = jsonData.map((row, index) => ({
           id: `${file.name}-${index}`,
           "Image URL": row[imageUrlKey],
@@ -289,4 +288,3 @@ export default function PlateGalleryPage() {
     </div>
   );
 }
-
