@@ -57,7 +57,7 @@ export default function PlateGalleryPage() {
           throw new Error("A planilha está vazia.");
         }
 
-        const header = Object.keys(jsonData[0]);
+        const header = Object.keys(jsonData[0] || {});
         const findHeader = (possibleNames: string[]) => {
           return header.find(h => possibleNames.includes(h.trim().toLowerCase()));
         }
@@ -76,9 +76,9 @@ export default function PlateGalleryPage() {
           const bodyTypeRaw = bodyTypeKey ? String(row[bodyTypeKey] || '').toLowerCase() : '';
           let bodyType: 'Carro' | 'Moto' | undefined;
           
-          if (['automovel'].includes(bodyTypeRaw)) {
+          if (['automovel', 'carro'].includes(bodyTypeRaw)) {
             bodyType = 'Carro';
-          } else if (['motocicleta', 'motoneta'].includes(bodyTypeRaw)) {
+          } else if (['motocicleta', 'motoneta', 'moto'].includes(bodyTypeRaw)) {
             bodyType = 'Moto';
           }
 
@@ -108,7 +108,9 @@ export default function PlateGalleryPage() {
         setData([]);
       } finally {
         setIsLoading(false);
-        event.target.value = "";
+        if (event.target) {
+            event.target.value = "";
+        }
       }
     };
     reader.readAsBinaryString(file);
@@ -182,7 +184,7 @@ export default function PlateGalleryPage() {
               <Image
                 src={item["Image URL"]}
                 alt={item["License Plate"] || 'Imagem do Veículo'}
-                layout="fill"
+                fill
                 objectFit="cover"
                 className="group-hover:opacity-90 transition-opacity"
                 unoptimized
@@ -340,3 +342,5 @@ export default function PlateGalleryPage() {
     </div>
   );
 }
+
+    
