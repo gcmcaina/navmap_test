@@ -3,8 +3,8 @@ import './globals.css';
 import { Toaster } from "@/components/ui/toaster"
 
 export const metadata: Metadata = {
-  title: 'Plate Gallery',
-  description: 'Upload, view, and manage license plate recognition data with ease.',
+  title: 'Image Viewer',
+  description: 'Upload a spreadsheet to view images.',
 };
 
 export default function RootLayout({
