@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useRef, MouseEvent } from "react";
+import { useState, useRef, MouseEvent, useEffect } from "react";
 import * as XLSX from "xlsx";
 import Image from "next/image";
 import type { PlateData } from "@/types";
@@ -31,12 +31,14 @@ export default function PlateGalleryPage() {
   const [isPanning, setIsPanning] = useState(false);
   const imageRef = useRef<HTMLDivElement>(null);
   const startPosRef = useRef({ x: 0, y: 0 });
+  const [imageErrors, setImageErrors] = useState<Record<string, boolean>>({});
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
     setIsLoading(true);
+    setImageErrors({});
     const reader = new FileReader();
     reader.onload = (e) => {
       try {
@@ -55,6 +57,7 @@ export default function PlateGalleryPage() {
         const header = Object.keys(jsonData[0]);
         const imageUrlKey = header.find(h => h.trim().toLowerCase() === "url da imagem");
         const licensePlateKey = header.find(h => h.trim().toLowerCase() === "placa");
+        const detectedAtKey = header.find(h => h.trim().toLowerCase() === "detectado em");
 
         if (!imageUrlKey) {
             throw new Error("Column 'URL da imagem' not found in the spreadsheet.");
@@ -64,7 +67,8 @@ export default function PlateGalleryPage() {
           id: `${file.name}-${index}`,
           "Image URL": row[imageUrlKey],
           "License Plate": licensePlateKey ? row[licensePlateKey] : "N/A",
-        }));
+          "Detected At": detectedAtKey ? row[detectedAtKey] : undefined,
+        })).filter(item => item["Image URL"]);
         
         setData(formattedData);
         toast({
@@ -132,33 +136,39 @@ export default function PlateGalleryPage() {
     setPosition({ x: 0, y: 0 });
   };
 
+  const handleImageError = (id: string) => {
+    setImageErrors(prev => ({...prev, [id]: true}));
+  }
+  
   const renderGrid = () => (
     <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4">
-      {data.map((item) => (
-        <Card
-          key={item.id}
-          className="overflow-hidden group transition-all duration-300 hover:shadow-xl cursor-pointer"
-          onClick={() => handleImageClick(item["Image URL"])}
-        >
-          <div className="relative w-full aspect-square bg-muted">
-            <Image
-              src={item["Image URL"]}
-              alt={item["License Plate"] || 'Vehicle Image'}
-              layout="fill"
-              objectFit="cover"
-              className="group-hover:opacity-90 transition-opacity"
-              unoptimized
-              onError={(e) => {
-                e.currentTarget.src = 'https://placehold.co/400x400.png';
-                e.currentTarget.dataset.aiHint = "broken image";
-              }}
-            />
-          </div>
-          <div className="p-3 bg-card text-center">
-            <p className="font-bold text-lg truncate">{item["License Plate"]}</p>
-          </div>
-        </Card>
-      ))}
+      {data.map((item) => {
+        if(imageErrors[item.id]) return null;
+
+        return (
+          <Card
+            key={item.id}
+            className="overflow-hidden group transition-all duration-300 hover:shadow-xl cursor-pointer"
+            onClick={() => handleImageClick(item["Image URL"])}
+          >
+            <div className="relative w-full aspect-square bg-muted">
+              <Image
+                src={item["Image URL"]}
+                alt={item["License Plate"] || 'Vehicle Image'}
+                layout="fill"
+                objectFit="cover"
+                className="group-hover:opacity-90 transition-opacity"
+                unoptimized
+                onError={() => handleImageError(item.id)}
+              />
+            </div>
+            <div className="p-3 bg-card text-center">
+              <p className="font-bold text-lg truncate">{item["License Plate"]}</p>
+              {item["Detected At"] && <p className="text-sm text-muted-foreground">{new Date(item["Detected At"]).toLocaleString()}</p>}
+            </div>
+          </Card>
+        )
+      })}
     </div>
   );
   
@@ -217,7 +227,14 @@ export default function PlateGalleryPage() {
                 <p className="text-muted-foreground mt-2">Upload a file to get started.</p>
              </Card>
           )}
-          {!isLoading && data.length > 0 && renderGrid()}
+          {!isLoading && data.filter(item => !imageErrors[item.id]).length > 0 && renderGrid()}
+          {!isLoading && data.length > 0 && data.every(item => imageErrors[item.id]) && (
+             <Card className="mt-6 text-center h-64 flex flex-col justify-center items-center border-dashed bg-muted/20">
+                <FileSpreadsheet className="h-16 w-16 text-muted-foreground mb-4" />
+                <h3 className="text-xl font-semibold">No valid images found</h3>
+                <p className="text-muted-foreground mt-2">Check the image URLs in your file.</p>
+             </Card>
+          )}
         </main>
       </div>
 
@@ -250,6 +267,7 @@ export default function PlateGalleryPage() {
                     onError={(e) => {
                       e.currentTarget.src = 'https://placehold.co/800x800.png'
                       e.currentTarget.dataset.aiHint = "broken image";
+                      setSelectedImage('https://placehold.co/800x800.png');
                     }}
                 />
             </div>
@@ -271,3 +289,4 @@ export default function PlateGalleryPage() {
     </div>
   );
 }
+
