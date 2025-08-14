@@ -54,7 +54,7 @@ export default function PlateGalleryPage() {
         const jsonData: any[] = XLSX.utils.sheet_to_json(worksheet);
 
         if (jsonData.length === 0) {
-          throw new Error("The spreadsheet is empty.");
+          throw new Error("A planilha está vazia.");
         }
 
         const header = Object.keys(jsonData[0]);
@@ -69,7 +69,7 @@ export default function PlateGalleryPage() {
 
 
         if (!imageUrlKey) {
-            throw new Error("Column 'URL da imagem' not found in the spreadsheet.");
+            throw new Error("A coluna 'URL da imagem' não foi encontrada na planilha.");
         }
         
         const formattedData: PlateData[] = jsonData.map((row, index) => {
@@ -94,16 +94,16 @@ export default function PlateGalleryPage() {
         setData(formattedData);
         setFilter('all');
         toast({
-          title: "Success",
-          description: `${formattedData.length} images loaded successfully.`,
+          title: "Sucesso",
+          description: `${formattedData.length} imagens carregadas com sucesso.`,
         });
 
       } catch (error: any) {
         console.error("Error parsing file:", error);
         toast({
           variant: "destructive",
-          title: "File Upload Error",
-          description: error.message || "Could not parse the uploaded file.",
+          title: "Erro ao Carregar Arquivo",
+          description: error.message || "Não foi possível analisar o arquivo carregado.",
         });
         setData([]);
       } finally {
@@ -181,7 +181,7 @@ export default function PlateGalleryPage() {
             <div className="relative w-full aspect-square bg-muted">
               <Image
                 src={item["Image URL"]}
-                alt={item["License Plate"] || 'Vehicle Image'}
+                alt={item["License Plate"] || 'Imagem do Veículo'}
                 layout="fill"
                 objectFit="cover"
                 className="group-hover:opacity-90 transition-opacity"
@@ -203,19 +203,19 @@ export default function PlateGalleryPage() {
     <div className="min-h-screen bg-background text-foreground">
       <div className="container mx-auto p-4 sm:p-6 lg:p-8">
         <header className="mb-8 text-center">
-          <h1 className="text-4xl font-bold text-primary">Image Viewer</h1>
+          <h1 className="text-4xl font-bold text-primary">Galeria de Placas</h1>
           <p className="text-muted-foreground mt-2">
-            Upload a spreadsheet to display images from any URL found in the file.
+            Faça o upload de uma planilha para exibir as imagens a partir de qualquer URL encontrada no arquivo.
           </p>
         </header>
 
         <Card className="max-w-lg mx-auto">
           <CardHeader>
-            <CardTitle className="text-center">Upload Spreadsheet</CardTitle>
+            <CardTitle className="text-center">Carregar Planilha</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex-grow">
-              <label className="text-sm font-medium mb-2 block sr-only">Upload File</label>
+              <label className="text-sm font-medium mb-2 block sr-only">Carregar Arquivo</label>
               <div className="relative">
                 <Input
                   type="file"
@@ -232,7 +232,7 @@ export default function PlateGalleryPage() {
                     ) : (
                       <Upload className="mr-2 h-4 w-4" />
                     )}
-                    {isLoading ? 'Processing...' : 'Select a CSV or XLSX file'}
+                    {isLoading ? 'Processando...' : 'Selecione um arquivo CSV ou XLSX'}
                   </label>
                  </Button>
               </div>
@@ -244,7 +244,7 @@ export default function PlateGalleryPage() {
           <div className="mt-8 flex justify-center gap-2">
             <Button variant={filter === 'all' ? 'default' : 'outline'} onClick={() => setFilter('all')}>
               <List className="mr-2 h-4 w-4" />
-              All
+              Todos
             </Button>
             <Button variant={filter === 'Carro' ? 'default' : 'outline'} onClick={() => setFilter('Carro')}>
                <Car className="mr-2 h-4 w-4" />
@@ -261,29 +261,29 @@ export default function PlateGalleryPage() {
           {isLoading && (
             <div className="flex justify-center items-center h-64 flex-col">
               <Loader2 className="h-12 w-12 animate-spin text-primary mb-4" />
-              <p className="text-lg text-muted-foreground">Processing your file...</p>
+              <p className="text-lg text-muted-foreground">Processando seu arquivo...</p>
             </div>
           )}
           {!isLoading && data.length === 0 && (
              <Card className="mt-6 text-center h-64 flex flex-col justify-center items-center border-dashed bg-muted/20">
                 <FileSpreadsheet className="h-16 w-16 text-muted-foreground mb-4" />
-                <h3 className="text-xl font-semibold">No Images to Display</h3>
-                <p className="text-muted-foreground mt-2">Upload a file to get started.</p>
+                <h3 className="text-xl font-semibold">Nenhuma Imagem para Exibir</h3>
+                <p className="text-muted-foreground mt-2">Faça o upload de um arquivo para começar.</p>
              </Card>
           )}
           {!isLoading && filteredData.length > 0 && renderGrid()}
           {!isLoading && data.length > 0 && filteredData.length === 0 && (
              <Card className="mt-6 text-center h-64 flex flex-col justify-center items-center border-dashed bg-muted/20">
                 <FileSpreadsheet className="h-16 w-16 text-muted-foreground mb-4" />
-                <h3 className="text-xl font-semibold">No images for this filter</h3>
-                <p className="text-muted-foreground mt-2">Select another filter or upload a new file.</p>
+                <h3 className="text-xl font-semibold">Nenhuma imagem para este filtro</h3>
+                <p className="text-muted-foreground mt-2">Selecione outro filtro ou carregue um novo arquivo.</p>
              </Card>
           )}
           {!isLoading && data.length > 0 && data.every(item => imageErrors[item.id]) && (
              <Card className="mt-6 text-center h-64 flex flex-col justify-center items-center border-dashed bg-muted/20">
                 <FileSpreadsheet className="h-16 w-16 text-muted-foreground mb-4" />
-                <h3 className="text-xl font-semibold">No valid images found</h3>
-                <p className="text-muted-foreground mt-2">Check the image URLs in your file.</p>
+                <h3 className="text-xl font-semibold">Nenhuma imagem válida encontrada</h3>
+                <p className="text-muted-foreground mt-2">Verifique as URLs das imagens em seu arquivo.</p>
              </Card>
           )}
         </main>
@@ -306,7 +306,7 @@ export default function PlateGalleryPage() {
             >
                 <Image
                     src={selectedImage}
-                    alt="Selected image"
+                    alt="Imagem selecionada"
                     width={1000}
                     height={1000}
                     className="w-auto h-auto max-w-full max-h-full object-contain rounded-lg transition-transform duration-200"
