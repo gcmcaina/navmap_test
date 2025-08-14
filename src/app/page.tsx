@@ -64,26 +64,36 @@ export default function PlateGalleryPage() {
         const workbook = XLSX.read(fileData, { type: "binary" });
         const sheetName = workbook.SheetNames[0];
         const worksheet = workbook.Sheets[sheetName];
+        
         const jsonData = XLSX.utils.sheet_to_json<any>(worksheet, {
           defval: "",
+          transform: (value, header) => header.trim(),
         });
+        
+        const rawHeaders: string[][] = XLSX.utils.sheet_to_json(worksheet, { header: 1 })[0] as any;
+        const headers = rawHeaders.map(h => h.trim());
 
         const requiredColumns = ["Image URL", "License Plate", "Make", "Model", "Year"];
-        const headers = Object.keys(jsonData[0] || {});
         const missingColumns = requiredColumns.filter(col => !headers.includes(col));
 
         if (missingColumns.length > 0) {
           throw new Error(`Missing columns: ${missingColumns.join(', ')}`);
         }
 
-        const formattedData: PlateData[] = jsonData.map((row, index) => ({
-          id: `${file.name}-${index}`,
-          "Image URL": row["Image URL"]?.toString() || "",
-          "License Plate": row["License Plate"]?.toString() || "",
-          Make: row["Make"]?.toString() || "",
-          Model: row["Model"]?.toString() || "",
-          Year: row["Year"]?.toString() || "",
-        }));
+        const formattedData: PlateData[] = jsonData.map((row, index) => {
+          const newRow: { [key: string]: any } = {};
+          for (const key in row) {
+            newRow[key.trim()] = row[key];
+          }
+          return {
+            id: `${file.name}-${index}`,
+            "Image URL": newRow["Image URL"]?.toString() || "",
+            "License Plate": newRow["License Plate"]?.toString() || "",
+            Make: newRow["Make"]?.toString() || "",
+            Model: newRow["Model"]?.toString() || "",
+            Year: newRow["Year"]?.toString() || "",
+          }
+        });
 
         setData(formattedData);
         toast({
