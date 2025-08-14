@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, MouseEvent } from "react";
 import * as XLSX from "xlsx";
 import Image from "next/image";
 import type { PlateData } from "@/types";
@@ -13,6 +13,9 @@ import {
   Upload,
   FileSpreadsheet,
   Loader2,
+  ZoomIn,
+  ZoomOut,
+  RotateCcw,
 } from "lucide-react";
 
 
@@ -21,6 +24,12 @@ export default function PlateGalleryPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const { toast } = useToast();
+
+  const [zoom, setZoom] = useState(1);
+  const [position, setPosition] = useState({ x: 0, y: 0 });
+  const [isPanning, setIsPanning] = useState(false);
+  const imageRef = useRef<HTMLDivElement>(null);
+  const startPosRef = useRef({ x: 0, y: 0 });
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -85,14 +94,58 @@ export default function PlateGalleryPage() {
     };
     reader.readAsBinaryString(file);
   };
+
+  const handleImageClick = (url: string) => {
+    setSelectedImage(url);
+    setZoom(1);
+    setPosition({ x: 0, y: 0 });
+  };
   
+  const handleWheel = (e: React.WheelEvent<HTMLDivElement>) => {
+    if (!imageRef.current) return;
+    e.preventDefault();
+
+    const scaleAmount = 0.1;
+    const newZoom = zoom - (e.deltaY > 0 ? scaleAmount : -scaleAmount);
+    setZoom(Math.max(0.5, Math.min(newZoom, 5))); // Clamp zoom level
+  };
+
+  const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (zoom > 1) {
+      e.preventDefault();
+      setIsPanning(true);
+      startPosRef.current = {
+        x: e.clientX - position.x,
+        y: e.clientY - position.y,
+      };
+    }
+  };
+
+  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (isPanning && imageRef.current) {
+      e.preventDefault();
+      const newX = e.clientX - startPosRef.current.x;
+      const newY = e.clientY - startPosRef.current.y;
+      setPosition({ x: newX, y: newY });
+    }
+  };
+
+  const handleMouseUp = () => {
+    setIsPanning(false);
+  };
+  
+  const handleResetZoom = () => {
+    setZoom(1);
+    setPosition({ x: 0, y: 0 });
+  };
+
   const renderGrid = () => (
     <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4">
       {data.map((item) => (
         <Card
           key={item.id}
           className="overflow-hidden group transition-all duration-300 hover:shadow-xl cursor-pointer"
-          onClick={() => setSelectedImage(item["Image URL"])}
+          onClick={() => handleImageClick(item["Image URL"])}
         >
           <div className="relative w-full aspect-square bg-muted">
             <Image
@@ -176,15 +229,30 @@ export default function PlateGalleryPage() {
       </div>
 
       <Dialog open={!!selectedImage} onOpenChange={(open) => !open && setSelectedImage(null)}>
-        <DialogContent className="max-w-4xl p-0 bg-transparent border-0">
+        <DialogContent className="max-w-7xl w-full h-[90vh] p-0 bg-transparent border-0 flex items-center justify-center overflow-hidden"
+          onWheel={handleWheel}
+          onMouseDown={handleMouseDown}
+          onMouseMove={handleMouseMove}
+          onMouseUp={handleMouseUp}
+          onMouseLeave={handleMouseUp}
+        >
           {selectedImage && (
-            <div className="relative w-full h-full">
+            <>
+            <div
+              ref={imageRef}
+              className="relative w-full h-full flex items-center justify-center"
+              style={{ cursor: isPanning ? 'grabbing' : (zoom > 1 ? 'grab' : 'default') }}
+            >
                 <Image
                     src={selectedImage}
                     alt="Selected image"
                     width={1000}
                     height={1000}
-                    className="w-full h-auto object-contain rounded-lg"
+                    className="w-auto h-auto max-w-full max-h-full object-contain rounded-lg transition-transform duration-200"
+                    style={{
+                      transform: `scale(${zoom}) translate(${position.x}px, ${position.y}px)`,
+                      transformOrigin: 'center center',
+                    }}
                     unoptimized
                     onError={(e) => {
                       e.currentTarget.src = 'https://placehold.co/800x800.png'
@@ -192,6 +260,18 @@ export default function PlateGalleryPage() {
                     }}
                 />
             </div>
+             <div className="absolute bottom-4 right-4 flex gap-2">
+                <Button variant="secondary" size="icon" onClick={() => setZoom(z => Math.max(0.5, z-0.2))}>
+                  <ZoomOut />
+                </Button>
+                <Button variant="secondary" size="icon" onClick={() => setZoom(z => Math.min(5, z+0.2))}>
+                  <ZoomIn />
+                </Button>
+                <Button variant="secondary" size="icon" onClick={handleResetZoom}>
+                  <RotateCcw />
+                </Button>
+            </div>
+            </>
           )}
         </DialogContent>
       </Dialog>
