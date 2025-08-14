@@ -6,4 +6,5 @@ export type PlateData = {
   Year?: string;
   Make?: string;
   Model?: string;
+  BodyType?: 'Carro' | 'Moto';
 };

@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useMemo, useRef } from "react";
 import * as XLSX from "xlsx";
 import Image from "next/image";
 import type { PlateData } from "@/types";
@@ -17,6 +17,9 @@ import {
   ZoomIn,
   ZoomOut,
   RotateCcw,
+  Car,
+  Bike,
+  List,
 } from "lucide-react";
 
 
@@ -24,6 +27,7 @@ export default function PlateGalleryPage() {
   const [data, setData] = useState<PlateData[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [filter, setFilter] = useState<'all' | 'Carro' | 'Moto'>('all');
   const { toast } = useToast();
 
   const [zoom, setZoom] = useState(1);
@@ -54,22 +58,41 @@ export default function PlateGalleryPage() {
         }
 
         const header = Object.keys(jsonData[0]);
-        const imageUrlKey = header.find(h => h.trim().toLowerCase() === "url da imagem");
-        const licensePlateKey = header.find(h => h.trim().toLowerCase() === "placa");
-        const detectedAtKey = header.find(h => h.trim().toLowerCase() === "detectado em");
+        const findHeader = (possibleNames: string[]) => {
+          return header.find(h => possibleNames.includes(h.trim().toLowerCase()));
+        }
+
+        const imageUrlKey = findHeader(["url da imagem", "image url"]);
+        const licensePlateKey = findHeader(["placa", "license plate"]);
+        const detectedAtKey = findHeader(["detectado em", "detected at"]);
+        const bodyTypeKey = findHeader(["carroceria", "body type"]);
+
 
         if (!imageUrlKey) {
             throw new Error("Column 'URL da imagem' not found in the spreadsheet.");
         }
         
-        const formattedData: PlateData[] = jsonData.map((row, index) => ({
-          id: `${file.name}-${index}`,
-          "Image URL": row[imageUrlKey],
-          "License Plate": licensePlateKey ? row[licensePlateKey] : "N/A",
-          "Detected At": detectedAtKey ? row[detectedAtKey] : undefined,
-        })).filter(item => item["Image URL"]);
+        const formattedData: PlateData[] = jsonData.map((row, index) => {
+          const bodyTypeRaw = bodyTypeKey ? String(row[bodyTypeKey] || '').toLowerCase() : '';
+          let bodyType: 'Carro' | 'Moto' | undefined;
+          
+          if (['automovel'].includes(bodyTypeRaw)) {
+            bodyType = 'Carro';
+          } else if (['motocicleta', 'motoneta'].includes(bodyTypeRaw)) {
+            bodyType = 'Moto';
+          }
+
+          return {
+            id: `${file.name}-${index}`,
+            "Image URL": row[imageUrlKey],
+            "License Plate": licensePlateKey ? row[licensePlateKey] : "N/A",
+            "Detected At": detectedAtKey ? row[detectedAtKey] : undefined,
+            "BodyType": bodyType
+          }
+        }).filter(item => item["Image URL"]);
         
         setData(formattedData);
+        setFilter('all');
         toast({
           title: "Success",
           description: `${formattedData.length} images loaded successfully.`,
@@ -138,13 +161,18 @@ export default function PlateGalleryPage() {
   const handleImageError = (id: string) => {
     setImageErrors(prev => ({...prev, [id]: true}));
   }
+
+  const filteredData = useMemo(() => {
+    return data.filter(item => {
+      if (imageErrors[item.id]) return false;
+      if (filter === 'all') return true;
+      return item.BodyType === filter;
+    });
+  }, [data, filter, imageErrors]);
   
   const renderGrid = () => (
     <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4">
-      {data.map((item) => {
-        if(imageErrors[item.id]) return null;
-
-        return (
+      {filteredData.map((item) => (
           <Card
             key={item.id}
             className="overflow-hidden group transition-all duration-300 hover:shadow-xl cursor-pointer"
@@ -167,7 +195,7 @@ export default function PlateGalleryPage() {
             </div>
           </Card>
         )
-      })}
+      )}
     </div>
   );
   
@@ -212,6 +240,23 @@ export default function PlateGalleryPage() {
           </CardContent>
         </Card>
 
+        {data.length > 0 && (
+          <div className="mt-8 flex justify-center gap-2">
+            <Button variant={filter === 'all' ? 'default' : 'outline'} onClick={() => setFilter('all')}>
+              <List className="mr-2 h-4 w-4" />
+              All
+            </Button>
+            <Button variant={filter === 'Carro' ? 'default' : 'outline'} onClick={() => setFilter('Carro')}>
+               <Car className="mr-2 h-4 w-4" />
+              Carros
+            </Button>
+            <Button variant={filter === 'Moto' ? 'default' : 'outline'} onClick={() => setFilter('Moto')}>
+              <Bike className="mr-2 h-4 w-4" />
+              Motos
+            </Button>
+          </div>
+        )}
+
         <main className="mt-8">
           {isLoading && (
             <div className="flex justify-center items-center h-64 flex-col">
@@ -226,7 +271,14 @@ export default function PlateGalleryPage() {
                 <p className="text-muted-foreground mt-2">Upload a file to get started.</p>
              </Card>
           )}
-          {!isLoading && data.filter(item => !imageErrors[item.id]).length > 0 && renderGrid()}
+          {!isLoading && filteredData.length > 0 && renderGrid()}
+          {!isLoading && data.length > 0 && filteredData.length === 0 && (
+             <Card className="mt-6 text-center h-64 flex flex-col justify-center items-center border-dashed bg-muted/20">
+                <FileSpreadsheet className="h-16 w-16 text-muted-foreground mb-4" />
+                <h3 className="text-xl font-semibold">No images for this filter</h3>
+                <p className="text-muted-foreground mt-2">Select another filter or upload a new file.</p>
+             </Card>
+          )}
           {!isLoading && data.length > 0 && data.every(item => imageErrors[item.id]) && (
              <Card className="mt-6 text-center h-64 flex flex-col justify-center items-center border-dashed bg-muted/20">
                 <FileSpreadsheet className="h-16 w-16 text-muted-foreground mb-4" />
