@@ -7,6 +7,7 @@ import type { PlateData } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import {
   Upload,
@@ -35,6 +36,7 @@ const headerMapping: { [key: string]: keyof PlateData } = {
 export default function PlateGalleryPage() {
   const [data, setData] = useState<PlateData[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const { toast } = useToast();
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -131,7 +133,8 @@ export default function PlateGalleryPage() {
       {data.map((item) => (
         <Card
           key={item.id}
-          className="overflow-hidden group transition-all duration-300 hover:shadow-xl"
+          className="overflow-hidden group transition-all duration-300 hover:shadow-xl cursor-pointer"
+          onClick={() => setSelectedImage(item["Image URL"])}
         >
           <div className="relative w-full aspect-square bg-muted">
             <Image
@@ -214,8 +217,28 @@ export default function PlateGalleryPage() {
           )}
           {!isLoading && data.length > 0 && renderGrid()}
         </main>
-
       </div>
+
+      <Dialog open={!!selectedImage} onOpenChange={(open) => !open && setSelectedImage(null)}>
+        <DialogContent className="max-w-4xl p-0 bg-transparent border-0">
+          {selectedImage && (
+            <div className="relative w-full h-full">
+                <Image
+                    src={selectedImage}
+                    alt="Selected image"
+                    width={1000}
+                    height={1000}
+                    className="w-full h-auto object-contain rounded-lg"
+                    unoptimized
+                    onError={(e) => {
+                      e.currentTarget.src = 'https://placehold.co/800x800.png'
+                      e.currentTarget.dataset.aiHint = "broken image";
+                    }}
+                />
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
