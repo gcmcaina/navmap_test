@@ -205,7 +205,7 @@ export default function PlateGalleryPage() {
     <div className="min-h-screen bg-background text-foreground">
       <div className="container mx-auto p-4 sm:p-6 lg:p-8">
         <header className="mb-8 text-center">
-          <h1 className="text-4xl font-bold text-primary">Galeria de Placas</h1>
+          <h1 className="text-4xl font-bold text-primary">LPR</h1>
           <p className="text-muted-foreground mt-2">
             Faça o upload de uma planilha para exibir as imagens a partir de qualquer URL encontrada no arquivo.
           </p>
