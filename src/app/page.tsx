@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useRef, MouseEvent } from "react";
@@ -44,41 +45,33 @@ export default function PlateGalleryPage() {
         const sheetName = workbook.SheetNames[0];
         const worksheet = workbook.Sheets[sheetName];
         
-        const urls: string[] = [];
-        const jsonData: any[][] = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+        const jsonData: any[] = XLSX.utils.sheet_to_json(worksheet);
 
-        // Regular expression to find URLs in cell content
-        const urlRegex = /(https?:\/\/[^\s]+)/g;
-
-        jsonData.forEach(row => {
-          row.forEach(cell => {
-            if (typeof cell === 'string') {
-              const found = cell.match(urlRegex);
-              if (found) {
-                urls.push(...found);
-              }
-            }
-          });
-        });
-
-        if (urls.length === 0) {
-          throw new Error("No image URLs found in the uploaded file.");
+        if (jsonData.length === 0) {
+          throw new Error("The spreadsheet is empty.");
         }
 
-        const formattedData: PlateData[] = urls.map((url, index) => ({
-          id: `${file.name}-${index}`,
-          "Image URL": url,
-          "License Plate": "N/A",
-          Make: "N/A",
-          Model: "N/A",
-          Year: "N/A",
-        }));
+        // Find header mapping
+        const header = Object.keys(jsonData[0]);
+        const imageUrlKey = header.find(h => h.trim().toLowerCase() === "url da imagem");
+        const licensePlateKey = header.find(h => h.trim().toLowerCase() === "placa");
 
+        if (!imageUrlKey) {
+            throw new Error("Column 'URL da imagem' not found in the spreadsheet.");
+        }
+
+        const formattedData: PlateData[] = jsonData.map((row, index) => ({
+          id: `${file.name}-${index}`,
+          "Image URL": row[imageUrlKey],
+          "License Plate": licensePlateKey ? row[licensePlateKey] : "N/A",
+        }));
+        
         setData(formattedData);
         toast({
           title: "Success",
           description: `${formattedData.length} images loaded successfully.`,
         });
+
       } catch (error: any) {
         console.error("Error parsing file:", error);
         toast({
@@ -162,7 +155,7 @@ export default function PlateGalleryPage() {
             />
           </div>
           <div className="p-3 bg-card text-center">
-            <p className="font-bold text-lg truncate">{item["Image URL"]}</p>
+            <p className="font-bold text-lg truncate">{item["License Plate"]}</p>
           </div>
         </Card>
       ))}
