@@ -213,7 +213,7 @@ export default function PlateGalleryPage() {
 
         <Card className="max-w-lg mx-auto">
           <CardHeader>
-            <CardTitle className="text-center">Carregar Planilha</CardTitle>
+            <CardTitle className="text-center">Anexe o Arquivo</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex-grow">
@@ -342,5 +342,3 @@ export default function PlateGalleryPage() {
     </div>
   );
 }
-
-    
