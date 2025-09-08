@@ -91,7 +91,7 @@ export default function PlateGalleryPage() {
             "License Plate": licensePlateKey ? row[licensePlateKey] : "N/A",
             "Detected At": detectedAtKey ? row[detectedAtKey] : undefined,
             "BodyType": bodyType,
-            "Marca": marcaKey ? (row[marcaKey] || "Marca não Informada") : "Marca não Informada",
+            "Marca": marcaKey && row[marcaKey] ? row[marcaKey] : "Marca não Informada",
           }
         }).filter(item => item["Image URL"]);
         
@@ -362,5 +362,3 @@ export default function PlateGalleryPage() {
     </div>
   );
 }
-
-    
