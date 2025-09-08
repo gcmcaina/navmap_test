@@ -103,7 +103,7 @@ export default function PlateGalleryPage() {
             "Detected At": detectedAtIndex > -1 ? row[detectedAtIndex] : undefined,
             "BodyType": bodyType,
             "Marca": marca || "Marca não Informada",
-            "Model": model || "Modelo não Informado",
+            "Model": model,
           }
         }).filter(item => item["Image URL"]);
         
@@ -215,7 +215,9 @@ export default function PlateGalleryPage() {
             </div>
             <div className="p-3 bg-card text-center">
               <p className="font-bold text-lg truncate">{item["License Plate"]}</p>
-              <p className="text-sm text-muted-foreground">{item.Marca} {item.Model}</p>
+              <p className="text-sm text-muted-foreground">
+                {item.Marca} {item.Marca !== 'Marca não Informada' && item.Model}
+              </p>
               {item["Detected At"] && <p className="text-sm text-muted-foreground">{new Date(item["Detected At"]).toLocaleString()}</p>}
             </div>
           </Card>
