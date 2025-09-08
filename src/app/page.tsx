@@ -53,30 +53,37 @@ export default function PlateGalleryPage() {
         const sheetName = workbook.SheetNames[0];
         const worksheet = workbook.Sheets[sheetName];
         
-        const jsonData: any[] = XLSX.utils.sheet_to_json(worksheet);
+        const jsonData: any[] = XLSX.utils.sheet_to_json(worksheet, {header: 1});
 
-        if (jsonData.length === 0) {
-          throw new Error("A planilha está vazia.");
+        if (jsonData.length < 2) {
+          throw new Error("A planilha está vazia ou contém apenas o cabeçalho.");
         }
 
-        const header = Object.keys(jsonData[0] || {});
-        const findHeader = (possibleNames: string[]) => {
-          return header.find(h => possibleNames.includes(h.trim().toLowerCase()));
+        const header: string[] = jsonData[0].map(h => String(h).trim().toLowerCase());
+        const findHeaderIndex = (possibleNames: string[]) => {
+          for (const name of possibleNames) {
+            const index = header.indexOf(name);
+            if (index > -1) {
+              return index;
+            }
+          }
+          return -1;
         }
 
-        const imageUrlKey = findHeader(["url da imagem", "image url"]);
-        const licensePlateKey = findHeader(["placa", "license plate"]);
-        const detectedAtKey = findHeader(["detectado em", "detected at"]);
-        const bodyTypeKey = findHeader(["carroceria", "body type"]);
-        const marcaKey = findHeader(["marca"]);
+        const imageUrlIndex = findHeaderIndex(["url da imagem", "image url"]);
+        const licensePlateIndex = findHeaderIndex(["placa", "license plate"]);
+        const detectedAtIndex = findHeaderIndex(["detectado em", "detected at"]);
+        const bodyTypeIndex = findHeaderIndex(["carroceria", "body type"]);
+        const marcaIndex = findHeaderIndex(["marca"]);
 
 
-        if (!imageUrlKey) {
+        if (imageUrlIndex === -1) {
             throw new Error("A coluna 'URL da imagem' não foi encontrada na planilha.");
         }
         
-        const formattedData: PlateData[] = jsonData.map((row, index) => {
-          const bodyTypeRaw = bodyTypeKey ? String(row[bodyTypeKey] || '').toLowerCase() : '';
+        const rows = jsonData.slice(1);
+        const formattedData: PlateData[] = rows.map((row: any[], index) => {
+          const bodyTypeRaw = bodyTypeIndex > -1 ? String(row[bodyTypeIndex] || '').toLowerCase() : '';
           let bodyType: 'Carro' | 'Moto' | undefined;
           
           if (['automovel', 'carro'].includes(bodyTypeRaw)) {
@@ -85,13 +92,15 @@ export default function PlateGalleryPage() {
             bodyType = 'Moto';
           }
 
+          const marca = marcaIndex > -1 && row[marcaIndex] ? String(row[marcaIndex]).trim() : "";
+
           return {
             id: `${file.name}-${index}`,
-            "Image URL": row[imageUrlKey],
-            "License Plate": licensePlateKey ? row[licensePlateKey] : "N/A",
-            "Detected At": detectedAtKey ? row[detectedAtKey] : undefined,
+            "Image URL": row[imageUrlIndex],
+            "License Plate": licensePlateIndex > -1 ? row[licensePlateIndex] : "N/A",
+            "Detected At": detectedAtIndex > -1 ? row[detectedAtIndex] : undefined,
             "BodyType": bodyType,
-            "Marca": marcaKey && row[marcaKey] ? row[marcaKey] : "Marca não Informada",
+            "Marca": marca || "Marca não Informada",
           }
         }).filter(item => item["Image URL"]);
         
@@ -362,3 +371,4 @@ export default function PlateGalleryPage() {
     </div>
   );
 }
+
