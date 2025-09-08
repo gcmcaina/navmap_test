@@ -1,3 +1,4 @@
+
 export type PlateData = {
   id: string;
   "License Plate": string;
@@ -7,4 +8,7 @@ export type PlateData = {
   Make?: string;
   Model?: string;
   BodyType?: 'Carro' | 'Moto';
+  Marca?: string;
 };
+
+    

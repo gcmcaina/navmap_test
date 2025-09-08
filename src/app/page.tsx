@@ -20,6 +20,7 @@ import {
   Car,
   Bike,
   List,
+  Search,
 } from "lucide-react";
 
 
@@ -28,6 +29,7 @@ export default function PlateGalleryPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [filter, setFilter] = useState<'all' | 'Carro' | 'Moto'>('all');
+  const [searchQuery, setSearchQuery] = useState("");
   const { toast } = useToast();
 
   const [zoom, setZoom] = useState(1);
@@ -66,6 +68,7 @@ export default function PlateGalleryPage() {
         const licensePlateKey = findHeader(["placa", "license plate"]);
         const detectedAtKey = findHeader(["detectado em", "detected at"]);
         const bodyTypeKey = findHeader(["carroceria", "body type"]);
+        const marcaKey = findHeader(["marca"]);
 
 
         if (!imageUrlKey) {
@@ -87,12 +90,14 @@ export default function PlateGalleryPage() {
             "Image URL": row[imageUrlKey],
             "License Plate": licensePlateKey ? row[licensePlateKey] : "N/A",
             "Detected At": detectedAtKey ? row[detectedAtKey] : undefined,
-            "BodyType": bodyType
+            "BodyType": bodyType,
+            "Marca": marcaKey ? (row[marcaKey] || "Marca não Informada") : "Marca não Informada",
           }
         }).filter(item => item["Image URL"]);
         
         setData(formattedData);
         setFilter('all');
+        setSearchQuery('');
         toast({
           title: "Sucesso",
           description: `${formattedData.length} imagens carregadas com sucesso.`,
@@ -167,10 +172,13 @@ export default function PlateGalleryPage() {
   const filteredData = useMemo(() => {
     return data.filter(item => {
       if (imageErrors[item.id]) return false;
-      if (filter === 'all') return true;
-      return item.BodyType === filter;
+      
+      const typeFilterMatch = filter === 'all' || item.BodyType === filter;
+      const searchFilterMatch = !searchQuery || (item.Marca && item.Marca.toLowerCase().includes(searchQuery.toLowerCase()));
+
+      return typeFilterMatch && searchFilterMatch;
     });
-  }, [data, filter, imageErrors]);
+  }, [data, filter, searchQuery, imageErrors]);
   
   const renderGrid = () => (
     <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4">
@@ -193,6 +201,7 @@ export default function PlateGalleryPage() {
             </div>
             <div className="p-3 bg-card text-center">
               <p className="font-bold text-lg truncate">{item["License Plate"]}</p>
+              <p className="text-sm text-muted-foreground">{item.Marca}</p>
               {item["Detected At"] && <p className="text-sm text-muted-foreground">{new Date(item["Detected At"]).toLocaleString()}</p>}
             </div>
           </Card>
@@ -243,19 +252,30 @@ export default function PlateGalleryPage() {
         </Card>
 
         {data.length > 0 && (
-          <div className="mt-8 flex justify-center gap-2">
-            <Button variant={filter === 'all' ? 'default' : 'outline'} onClick={() => setFilter('all')}>
-              <List className="mr-2 h-4 w-4" />
-              Todos
-            </Button>
-            <Button variant={filter === 'Carro' ? 'default' : 'outline'} onClick={() => setFilter('Carro')}>
-               <Car className="mr-2 h-4 w-4" />
-              Carros
-            </Button>
-            <Button variant={filter === 'Moto' ? 'default' : 'outline'} onClick={() => setFilter('Moto')}>
-              <Bike className="mr-2 h-4 w-4" />
-              Motos
-            </Button>
+          <div className="mt-8 flex flex-col sm:flex-row justify-center items-center gap-4">
+            <div className="relative w-full max-w-xs">
+              <Input 
+                placeholder="Pesquisar por marca..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10"
+              />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+            </div>
+            <div className="flex gap-2">
+              <Button variant={filter === 'all' ? 'default' : 'outline'} onClick={() => setFilter('all')}>
+                <List className="mr-2 h-4 w-4" />
+                Todos
+              </Button>
+              <Button variant={filter === 'Carro' ? 'default' : 'outline'} onClick={() => setFilter('Carro')}>
+                 <Car className="mr-2 h-4 w-4" />
+                Carros
+              </Button>
+              <Button variant={filter === 'Moto' ? 'default' : 'outline'} onClick={() => setFilter('Moto')}>
+                <Bike className="mr-2 h-4 w-4" />
+                Motos
+              </Button>
+            </div>
           </div>
         )}
 
@@ -342,3 +362,5 @@ export default function PlateGalleryPage() {
     </div>
   );
 }
+
+    
