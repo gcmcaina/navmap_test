@@ -75,6 +75,7 @@ export default function PlateGalleryPage() {
         const detectedAtIndex = findHeaderIndex(["detectado em", "detected at"]);
         const bodyTypeIndex = findHeaderIndex(["carroceria", "body type"]);
         const marcaIndex = findHeaderIndex(["marca"]);
+        const modelIndex = findHeaderIndex(["modelo", "model"]);
 
 
         if (imageUrlIndex === -1) {
@@ -93,6 +94,7 @@ export default function PlateGalleryPage() {
           }
 
           const marca = marcaIndex > -1 && row[marcaIndex] ? String(row[marcaIndex]).trim() : "";
+          const model = modelIndex > -1 && row[modelIndex] ? String(row[modelIndex]).trim() : "";
 
           return {
             id: `${file.name}-${index}`,
@@ -101,6 +103,7 @@ export default function PlateGalleryPage() {
             "Detected At": detectedAtIndex > -1 ? row[detectedAtIndex] : undefined,
             "BodyType": bodyType,
             "Marca": marca || "Marca não Informada",
+            "Model": model || "Modelo não Informado",
           }
         }).filter(item => item["Image URL"]);
         
@@ -183,7 +186,9 @@ export default function PlateGalleryPage() {
       if (imageErrors[item.id]) return false;
       
       const typeFilterMatch = filter === 'all' || item.BodyType === filter;
-      const searchFilterMatch = !searchQuery || (item.Marca && item.Marca.toLowerCase().includes(searchQuery.toLowerCase()));
+      const searchFilterMatch = !searchQuery || 
+        (item.Marca && item.Marca.toLowerCase().includes(searchQuery.toLowerCase())) ||
+        (item.Model && item.Model.toLowerCase().includes(searchQuery.toLowerCase()));
 
       return typeFilterMatch && searchFilterMatch;
     });
@@ -210,7 +215,7 @@ export default function PlateGalleryPage() {
             </div>
             <div className="p-3 bg-card text-center">
               <p className="font-bold text-lg truncate">{item["License Plate"]}</p>
-              <p className="text-sm text-muted-foreground">{item.Marca}</p>
+              <p className="text-sm text-muted-foreground">{item.Marca} {item.Model}</p>
               {item["Detected At"] && <p className="text-sm text-muted-foreground">{new Date(item["Detected At"]).toLocaleString()}</p>}
             </div>
           </Card>
@@ -264,7 +269,7 @@ export default function PlateGalleryPage() {
           <div className="mt-8 flex flex-col sm:flex-row justify-center items-center gap-4">
             <div className="relative w-full max-w-xs">
               <Input 
-                placeholder="Pesquisar por marca..."
+                placeholder="Pesquisar por marca ou modelo..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-10"
