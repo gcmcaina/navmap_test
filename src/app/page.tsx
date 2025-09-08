@@ -76,6 +76,7 @@ export default function PlateGalleryPage() {
         const bodyTypeIndex = findHeaderIndex(["carroceria", "body type"]);
         const marcaIndex = findHeaderIndex(["marca"]);
         const modelIndex = findHeaderIndex(["modelo", "model"]);
+        const trustLevelIndex = 5; // Column F
 
 
         if (imageUrlIndex === -1) {
@@ -84,17 +85,24 @@ export default function PlateGalleryPage() {
         
         const rows = jsonData.slice(1);
         const formattedData: PlateData[] = rows.map((row: any[], index) => {
-          const bodyTypeRaw = bodyTypeIndex > -1 ? String(row[bodyTypeIndex] || '').toLowerCase() : '';
-          let bodyType: 'Carro' | 'Moto' | undefined;
-          
-          if (['automovel', 'carro'].includes(bodyTypeRaw)) {
-            bodyType = 'Carro';
-          } else if (['motocicleta', 'motoneta', 'moto'].includes(bodyTypeRaw)) {
-            bodyType = 'Moto';
-          }
+          const trustLevel = trustLevelIndex > -1 ? parseFloat(row[trustLevelIndex]) : 100;
+          const isTrusted = trustLevel >= 86;
 
-          const marca = marcaIndex > -1 && row[marcaIndex] ? String(row[marcaIndex]).trim() : "";
-          const model = modelIndex > -1 && row[modelIndex] ? String(row[modelIndex]).trim() : "";
+          let bodyType: 'Carro' | 'Moto' | undefined;
+          let marca = "";
+          let model = "";
+
+          if (isTrusted) {
+            const bodyTypeRaw = bodyTypeIndex > -1 ? String(row[bodyTypeIndex] || '').toLowerCase() : '';
+            if (['automovel', 'carro'].includes(bodyTypeRaw)) {
+              bodyType = 'Carro';
+            } else if (['motocicleta', 'motoneta', 'moto'].includes(bodyTypeRaw)) {
+              bodyType = 'Moto';
+            }
+            marca = marcaIndex > -1 && row[marcaIndex] ? String(row[marcaIndex]).trim() : "";
+            model = modelIndex > -1 && row[modelIndex] ? String(row[modelIndex]).trim() : "";
+          }
+          
 
           return {
             id: `${file.name}-${index}`,
@@ -378,4 +386,3 @@ export default function PlateGalleryPage() {
     </div>
   );
 }
-
