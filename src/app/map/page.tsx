@@ -1,6 +1,5 @@
 'use client';
 
-import { useMemo } from 'react';
 import dynamic from 'next/dynamic';
 import { cameraData } from '@/lib/camera-data';
 import { Card } from '@/components/ui/card';
@@ -8,12 +7,12 @@ import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { ChevronLeft } from 'lucide-react';
 
-const MapPage = () => {
-  const Map = useMemo(() => dynamic(() => import('@/components/map'), {
-    loading: () => <p>A map is loading</p>,
-    ssr: false
-  }), []);
+const Map = dynamic(() => import('@/components/map'), {
+  loading: () => <p>A map is loading</p>,
+  ssr: false
+});
 
+const MapPage = () => {
   return (
     <div className="min-h-screen bg-background text-foreground flex flex-col">
        <header className="p-4 border-b">
