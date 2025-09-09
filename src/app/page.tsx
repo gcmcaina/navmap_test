@@ -368,49 +368,51 @@ export default function PlateGalleryPage() {
           onOpenChange={setIsHeaderOpen}
           className="w-full"
         >
-          <CollapsibleTrigger asChild>
-            <div className="flex justify-between items-center cursor-pointer mb-2">
-                <h1 className="text-4xl font-bold text-primary">LPR</h1>
-                <Button variant="ghost" size="sm">
-                  <ChevronDown className={`transition-transform duration-300 ${isHeaderOpen ? "" : "-rotate-90"}`} />
-                  <span className="sr-only">Toggle Header</span>
-                </Button>
-            </div>
-          </CollapsibleTrigger>
-          <CollapsibleContent>
-            <p className="text-muted-foreground mt-2">
-              Faça o upload de uma planilha para exibir as imagens a partir de qualquer URL encontrada no arquivo.
-            </p>
-            <Card className="max-w-lg mx-auto mt-4 mb-8">
-              <CardHeader>
-                <CardTitle className="text-center">Anexe o Arquivo</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="flex-grow">
-                  <label className="text-sm font-medium mb-2 block sr-only">Carregar Arquivo</label>
-                  <div className="relative">
-                    <Input
-                      type="file"
-                      id="file-upload"
-                      className="hidden"
-                      accept=".csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel"
-                      onChange={handleFileUpload}
-                      disabled={isLoading}
-                    />
-                    <Button asChild variant="outline" className="w-full justify-center text-left font-normal" disabled={isLoading}>
-                      <label htmlFor="file-upload" className="cursor-pointer">
-                        {isLoading ? (
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        ) : (
-                          <Upload className="mr-2 h-4 w-4" />
-                        )}
-                        {isLoading ? 'Processando...' : 'Selecione um arquivo CSV ou XLSX'}
-                      </label>
-                    </Button>
-                  </div>
+          <div className="flex justify-between items-center mb-2">
+            <CollapsibleTrigger asChild>
+                <div className="flex items-center gap-2 cursor-pointer">
+                    <h1 className="text-4xl font-bold text-primary">LPR</h1>
+                    <ChevronDown className={`transition-transform duration-300 ${isHeaderOpen ? "" : "-rotate-90"}`} />
+                    <span className="sr-only">Toggle Header</span>
                 </div>
-              </CardContent>
-            </Card>
+            </CollapsibleTrigger>
+          </div>
+          <CollapsibleContent>
+             <div className="text-center">
+                <p className="text-muted-foreground mt-2 max-w-2xl mx-auto">
+                    Faça o upload de uma planilha para exibir as imagens a partir de qualquer URL encontrada no arquivo.
+                </p>
+                <Card className="max-w-lg mx-auto mt-4 mb-8">
+                <CardHeader>
+                    <CardTitle>Anexe o Arquivo</CardTitle>
+                </CardHeader>
+                <CardContent>
+                    <div className="flex-grow">
+                    <label className="text-sm font-medium mb-2 block sr-only">Carregar Arquivo</label>
+                    <div className="relative">
+                        <Input
+                        type="file"
+                        id="file-upload"
+                        className="hidden"
+                        accept=".csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel"
+                        onChange={handleFileUpload}
+                        disabled={isLoading}
+                        />
+                        <Button asChild variant="outline" className="w-full justify-center text-left font-normal" disabled={isLoading}>
+                        <label htmlFor="file-upload" className="cursor-pointer">
+                            {isLoading ? (
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            ) : (
+                            <Upload className="mr-2 h-4 w-4" />
+                            )}
+                            {isLoading ? 'Processando...' : 'Selecione um arquivo CSV ou XLSX'}
+                        </label>
+                        </Button>
+                    </div>
+                    </div>
+                </CardContent>
+                </Card>
+            </div>
           </CollapsibleContent>
         </Collapsible>
 
@@ -581,3 +583,5 @@ export default function PlateGalleryPage() {
     </div>
   );
 }
+
+    
