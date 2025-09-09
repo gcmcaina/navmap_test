@@ -26,6 +26,7 @@ import {
   FileArchive,
   Clock,
   ChevronDown,
+  Map,
 } from "lucide-react";
 import {
   Collapsible,
@@ -35,6 +36,8 @@ import {
 import JSZip from "jszip";
 import { saveAs } from "file-saver";
 import { Label } from "@/components/ui/label";
+import { cameraAddressMapping } from "@/lib/camera-data";
+import Link from "next/link";
 
 
 export default function PlateGalleryPage() {
@@ -106,6 +109,9 @@ export default function PlateGalleryPage() {
         const formattedData: PlateData[] = rows.map((row: any[], index) => {
           const trustLevel = trustLevelIndex > -1 && row[trustLevelIndex] ? parseFloat(row[trustLevelIndex]) : 100;
           const isTrusted = trustLevel >= 86;
+          
+          const cameraID = cameraIDIndex > -1 ? String(row[cameraIDIndex] || '') : undefined;
+          const cameraAddress = cameraID ? cameraAddressMapping[cameraID] : undefined;
 
           let bodyType: 'Carro' | 'Moto' | undefined;
           let marca = "";
@@ -130,6 +136,8 @@ export default function PlateGalleryPage() {
             "BodyType": bodyType,
             "Marca": marca || "Marca não Informada",
             "Model": model,
+            "CameraID": cameraID,
+            "CameraAddress": cameraAddress,
           }
         }).filter(item => item["Image URL"]);
         
@@ -368,6 +376,7 @@ export default function PlateGalleryPage() {
               <p className="text-sm text-muted-foreground">
                 {item.Marca !== "Marca não Informada" ? `${item.Marca} ${item.Model}` : "Marca não Informada"}
               </p>
+              {item["CameraAddress"] && <p className="text-xs text-muted-foreground truncate">{item["CameraAddress"]}</p>}
               {item["Detected At"] && <p className="text-sm text-muted-foreground">{new Date(item["Detected At"]).toLocaleString()}</p>}
             </div>
           </Card>
@@ -587,6 +596,9 @@ export default function PlateGalleryPage() {
                    {selectedItem["Detected At"] && (
                       <p><span className="font-semibold">Detectado em:</span> {new Date(selectedItem["Detected At"]).toLocaleString()}</p>
                    )}
+                   {selectedItem.CameraAddress && (
+                      <p><span className="font-semibold">Local:</span> {selectedItem.CameraAddress}</p>
+                   )}
                 </div>
               </div>
             </>
@@ -596,3 +608,5 @@ export default function PlateGalleryPage() {
     </div>
   );
 }
+
+    
