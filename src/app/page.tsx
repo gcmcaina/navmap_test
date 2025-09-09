@@ -8,7 +8,7 @@ import type { PlateData } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import {
   Upload,
@@ -25,7 +25,13 @@ import {
   Download,
   FileArchive,
   Clock,
+  ChevronDown,
 } from "lucide-react";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible"
 import { cameraAddressMapping } from "@/lib/camera-data";
 import JSZip from "jszip";
 import { saveAs } from "file-saver";
@@ -40,6 +46,7 @@ export default function PlateGalleryPage() {
   const [filter, setFilter] = useState<'all' | 'Carro' | 'Moto'>('all');
   const [searchQuery, setSearchQuery] = useState("");
   const { toast } = useToast();
+  const [isHeaderOpen, setIsHeaderOpen] = useState(true);
 
   const [zoom, setZoom] = useState(1);
   const [position, setPosition] = useState({ x: 0, y: 0 });
@@ -88,8 +95,8 @@ export default function PlateGalleryPage() {
         const bodyTypeIndex = findHeaderIndex(["carroceria", "body type"]);
         const marcaIndex = findHeaderIndex(["marca"]);
         const modelIndex = findHeaderIndex(["modelo", "model"]);
-        const trustLevelIndex = 5; // Column F
-        const cameraIDIndex = 2; // Column C
+        const trustLevelIndex = findHeaderIndex(["confiança", "trust level", "f"]);
+        const cameraIDIndex = findHeaderIndex(["id da câmera", "camera id", "c"]);
 
 
         if (imageUrlIndex === -1) {
@@ -98,7 +105,7 @@ export default function PlateGalleryPage() {
         
         const rows = jsonData.slice(1);
         const formattedData: PlateData[] = rows.map((row: any[], index) => {
-          const trustLevel = trustLevelIndex > -1 ? parseFloat(row[trustLevelIndex]) : 100;
+          const trustLevel = trustLevelIndex > -1 && row[trustLevelIndex] ? parseFloat(row[trustLevelIndex]) : 100;
           const isTrusted = trustLevel >= 86;
 
           let bodyType: 'Carro' | 'Moto' | undefined;
@@ -135,6 +142,7 @@ export default function PlateGalleryPage() {
         setData(formattedData);
         setFilter('all');
         setSearchQuery('');
+        setIsHeaderOpen(false);
         toast({
           title: "Sucesso",
           description: `${formattedData.length} imagens carregadas com sucesso.`,
@@ -175,21 +183,17 @@ export default function PlateGalleryPage() {
     const image = imageRef.current;
     const rect = image.getBoundingClientRect();
   
-    // Position of cursor relative to the viewport
     const mouseX = e.clientX;
     const mouseY = e.clientY;
   
-    // Position of cursor relative to the image
     const imageX = mouseX - rect.left;
     const imageY = mouseY - rect.top;
   
-    // The point on the image that should be under the cursor
-    const pointX = (imageX - position.x * zoom) / zoom;
-    const pointY = (imageY - position.y * zoom) / zoom;
+    const pointX = (imageX - position.x) / zoom;
+    const pointY = (imageY - position.y) / zoom;
   
-    // The new position of the image
-    const newPosX = (imageX - pointX * clampedZoom) / clampedZoom;
-    const newPosY = (imageY - pointY * clampedZoom) / clampedZoom;
+    const newPosX = imageX - pointX * clampedZoom;
+    const newPosY = imageY - pointY * clampedZoom;
   
     setZoom(clampedZoom);
     setPosition({ x: newPosX, y: newPosY });
@@ -200,8 +204,8 @@ export default function PlateGalleryPage() {
       e.preventDefault();
       setIsPanning(true);
       startPosRef.current = {
-        x: e.clientX - position.x * zoom,
-        y: e.clientY - position.y * zoom,
+        x: e.clientX - position.x,
+        y: e.clientY - position.y,
       };
     }
   };
@@ -209,8 +213,8 @@ export default function PlateGalleryPage() {
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
     if (isPanning && imageRef.current) {
       e.preventDefault();
-      const newX = (e.clientX - startPosRef.current.x) / zoom;
-      const newY = (e.clientY - startPosRef.current.y) / zoom;
+      const newX = e.clientX - startPosRef.current.x;
+      const newY = e.clientY - startPosRef.current.y;
       setPosition({ x: newX, y: newY });
     }
   };
@@ -287,25 +291,29 @@ export default function PlateGalleryPage() {
 
       let timeFilterMatch = true;
       if (item["Detected At"] && (startTime || endTime)) {
-        const itemDate = new Date(item["Detected At"]);
-        const itemTime = itemDate.getHours() * 60 + itemDate.getMinutes();
+        const detectedAt = String(item["Detected At"]);
+        const timePart = detectedAt.split(' ')[1];
+        if (!timePart) return false;
+
+        const [hours, minutes] = timePart.split(':').map(Number);
+        const itemTime = hours * 60 + minutes;
 
         let startMinutes: number | null = null;
         if (startTime) {
-          const [hours, minutes] = startTime.split(':').map(Number);
-          startMinutes = hours * 60 + minutes;
+          const [startHours, startMinutesVal] = startTime.split(':').map(Number);
+          startMinutes = startHours * 60 + startMinutesVal;
         }
 
         let endMinutes: number | null = null;
         if (endTime) {
-          const [hours, minutes] = endTime.split(':').map(Number);
-          endMinutes = hours * 60 + minutes;
+          const [endHours, endMinutesVal] = endTime.split(':').map(Number);
+          endMinutes = endHours * 60 + endMinutesVal;
         }
 
         if (startMinutes !== null && endMinutes !== null) {
           if (startMinutes <= endMinutes) {
             timeFilterMatch = itemTime >= startMinutes && itemTime <= endMinutes;
-          } else { // Handles overnight range e.g., 22:00 to 02:00
+          } else { 
             timeFilterMatch = itemTime >= startMinutes || itemTime <= endMinutes;
           }
         } else if (startMinutes !== null) {
@@ -341,7 +349,7 @@ export default function PlateGalleryPage() {
             <div className="p-3 bg-card text-center">
               <p className="font-bold text-lg truncate">{item["License Plate"]}</p>
               <p className="text-sm text-muted-foreground">
-                {item.Marca} {item.Marca !== 'Marca não Informada' && item.Model}
+                {item.Marca !== "Marca não Informada" ? `${item.Marca} ${item.Model}` : "Marca não Informada"}
               </p>
               {item.CameraAddress && <p className="text-xs text-muted-foreground flex items-center justify-center gap-1"><Camera className="w-3 h-3"/> {item.CameraAddress}</p>}
               {item["Detected At"] && <p className="text-sm text-muted-foreground">{new Date(item["Detected At"]).toLocaleString()}</p>}
@@ -355,43 +363,57 @@ export default function PlateGalleryPage() {
   return (
     <div className="min-h-screen bg-background text-foreground">
       <div className="container mx-auto p-4 sm:p-6 lg:p-8">
-        <header className="mb-8 text-center">
-          <h1 className="text-4xl font-bold text-primary">LPR</h1>
-          <p className="text-muted-foreground mt-2">
-            Faça o upload de uma planilha para exibir as imagens a partir de qualquer URL encontrada no arquivo.
-          </p>
-        </header>
-
-        <Card className="max-w-lg mx-auto">
-          <CardHeader>
-            <CardTitle className="text-center">Anexe o Arquivo</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex-grow">
-              <label className="text-sm font-medium mb-2 block sr-only">Carregar Arquivo</label>
-              <div className="relative">
-                <Input
-                  type="file"
-                  id="file-upload"
-                  className="hidden"
-                  accept=".csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel"
-                  onChange={handleFileUpload}
-                  disabled={isLoading}
-                />
-                 <Button asChild variant="outline" className="w-full justify-center text-left font-normal" disabled={isLoading}>
-                  <label htmlFor="file-upload" className="cursor-pointer">
-                    {isLoading ? (
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    ) : (
-                      <Upload className="mr-2 h-4 w-4" />
-                    )}
-                    {isLoading ? 'Processando...' : 'Selecione um arquivo CSV ou XLSX'}
-                  </label>
-                 </Button>
-              </div>
+        <Collapsible
+          open={isHeaderOpen}
+          onOpenChange={setIsHeaderOpen}
+          className="w-full"
+        >
+          <CollapsibleTrigger asChild>
+            <div className="flex justify-between items-center cursor-pointer mb-2">
+                <h1 className="text-4xl font-bold text-primary">LPR</h1>
+                <Button variant="ghost" size="sm">
+                  <ChevronDown className={`transition-transform duration-300 ${isHeaderOpen ? "" : "-rotate-90"}`} />
+                  <span className="sr-only">Toggle Header</span>
+                </Button>
             </div>
-          </CardContent>
-        </Card>
+          </CollapsibleTrigger>
+          <CollapsibleContent>
+            <p className="text-muted-foreground mt-2">
+              Faça o upload de uma planilha para exibir as imagens a partir de qualquer URL encontrada no arquivo.
+            </p>
+            <Card className="max-w-lg mx-auto mt-4 mb-8">
+              <CardHeader>
+                <CardTitle className="text-center">Anexe o Arquivo</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex-grow">
+                  <label className="text-sm font-medium mb-2 block sr-only">Carregar Arquivo</label>
+                  <div className="relative">
+                    <Input
+                      type="file"
+                      id="file-upload"
+                      className="hidden"
+                      accept=".csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel"
+                      onChange={handleFileUpload}
+                      disabled={isLoading}
+                    />
+                    <Button asChild variant="outline" className="w-full justify-center text-left font-normal" disabled={isLoading}>
+                      <label htmlFor="file-upload" className="cursor-pointer">
+                        {isLoading ? (
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        ) : (
+                          <Upload className="mr-2 h-4 w-4" />
+                        )}
+                        {isLoading ? 'Processando...' : 'Selecione um arquivo CSV ou XLSX'}
+                      </label>
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </CollapsibleContent>
+        </Collapsible>
+
 
         {data.length > 0 && (
           <div className="mt-8 flex flex-col sm:flex-row justify-center items-center gap-4 flex-wrap">
@@ -489,7 +511,7 @@ export default function PlateGalleryPage() {
           onMouseLeave={handleMouseUp}
         >
           <DialogHeader className="p-4">
-             <DialogTitle className="sr-only">Imagem em tela cheia</DialogTitle>
+             <DialogTitle>Imagem Ampliada</DialogTitle>
              <DialogDescription className="sr-only">Visualize e interaja com a imagem selecionada.</DialogDescription>
           </DialogHeader>
           {selectedItem && (
@@ -507,7 +529,7 @@ export default function PlateGalleryPage() {
                     className="w-auto h-auto max-w-full max-h-full object-contain rounded-lg transition-transform duration-200"
                     style={{
                       transform: `scale(${zoom}) translate(${position.x}px, ${position.y}px)`,
-                      transformOrigin: '0 0',
+                      transformOrigin: 'top left',
                     }}
                     unoptimized
                     onError={(e) => {
