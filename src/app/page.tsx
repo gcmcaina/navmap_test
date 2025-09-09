@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useMemo, useRef } from "react";
+import { useState, useMemo, useRef, useEffect } from "react";
 import * as XLSX from "xlsx";
 import Image from "next/image";
 import type { PlateData } from "@/types";
@@ -326,6 +326,29 @@ export default function PlateGalleryPage() {
       return typeFilterMatch && searchFilterMatch && timeFilterMatch;
     });
   }, [data, filter, searchQuery, imageErrors, startTime, endTime]);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (!selectedItem) return;
+
+      const currentIndex = filteredData.findIndex(item => item.id === selectedItem.id);
+      if (currentIndex === -1) return;
+
+      let nextIndex;
+      if (e.key === "ArrowRight") {
+        nextIndex = (currentIndex + 1) % filteredData.length;
+        setSelectedItem(filteredData[nextIndex]);
+      } else if (e.key === "ArrowLeft") {
+        nextIndex = (currentIndex - 1 + filteredData.length) % filteredData.length;
+        setSelectedItem(filteredData[nextIndex]);
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [selectedItem, filteredData]);
   
   const renderGrid = () => (
     <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4">
