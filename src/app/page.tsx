@@ -24,10 +24,12 @@ import {
   Camera,
   Download,
   FileArchive,
+  Clock,
 } from "lucide-react";
 import { cameraAddressMapping } from "@/lib/camera-data";
 import JSZip from "jszip";
 import { saveAs } from "file-saver";
+import { Label } from "@/components/ui/label";
 
 
 export default function PlateGalleryPage() {
@@ -45,6 +47,9 @@ export default function PlateGalleryPage() {
   const imageRef = useRef<HTMLImageElement>(null);
   const startPosRef = useRef({ x: 0, y: 0 });
   const [imageErrors, setImageErrors] = useState<Record<string, boolean>>({});
+  const [startTime, setStartTime] = useState('');
+  const [endTime, setEndTime] = useState('');
+
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -280,9 +285,39 @@ export default function PlateGalleryPage() {
         (item.Model && item.Model.toLowerCase().includes(normalizedSearch)) ||
         (item["License Plate"] && item["License Plate"].toLowerCase().includes(normalizedSearch));
 
-      return typeFilterMatch && searchFilterMatch;
+      let timeFilterMatch = true;
+      if (item["Detected At"] && (startTime || endTime)) {
+        const itemDate = new Date(item["Detected At"]);
+        const itemTime = itemDate.getHours() * 60 + itemDate.getMinutes();
+
+        let startMinutes: number | null = null;
+        if (startTime) {
+          const [hours, minutes] = startTime.split(':').map(Number);
+          startMinutes = hours * 60 + minutes;
+        }
+
+        let endMinutes: number | null = null;
+        if (endTime) {
+          const [hours, minutes] = endTime.split(':').map(Number);
+          endMinutes = hours * 60 + minutes;
+        }
+
+        if (startMinutes !== null && endMinutes !== null) {
+          if (startMinutes <= endMinutes) {
+            timeFilterMatch = itemTime >= startMinutes && itemTime <= endMinutes;
+          } else { // Handles overnight range e.g., 22:00 to 02:00
+            timeFilterMatch = itemTime >= startMinutes || itemTime <= endMinutes;
+          }
+        } else if (startMinutes !== null) {
+          timeFilterMatch = itemTime >= startMinutes;
+        } else if (endMinutes !== null) {
+          timeFilterMatch = itemTime <= endMinutes;
+        }
+      }
+
+      return typeFilterMatch && searchFilterMatch && timeFilterMatch;
     });
-  }, [data, filter, searchQuery, imageErrors]);
+  }, [data, filter, searchQuery, imageErrors, startTime, endTime]);
   
   const renderGrid = () => (
     <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4">
@@ -383,6 +418,29 @@ export default function PlateGalleryPage() {
                 Motos
               </Button>
             </div>
+            <div className="flex gap-4 items-center">
+              <Clock className="w-5 h-5 text-muted-foreground" />
+              <div className="grid gap-1">
+                <Label htmlFor="start-time" className="text-xs">Início</Label>
+                <Input 
+                  id="start-time"
+                  type="time"
+                  value={startTime}
+                  onChange={(e) => setStartTime(e.target.value)}
+                  className="w-32"
+                />
+              </div>
+              <div className="grid gap-1">
+                <Label htmlFor="end-time" className="text-xs">Fim</Label>
+                <Input 
+                  id="end-time"
+                  type="time"
+                  value={endTime}
+                  onChange={(e) => setEndTime(e.target.value)}
+                  className="w-32"
+                />
+              </div>
+            </div>
              <Button onClick={handleDownloadAll} disabled={isDownloading || filteredData.length === 0}>
                 {isDownloading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileArchive className="mr-2 h-4 w-4" />}
                 {isDownloading ? 'Baixando...' : `Baixar ${filteredData.length} Imagens`}
@@ -430,9 +488,9 @@ export default function PlateGalleryPage() {
           onMouseUp={handleMouseUp}
           onMouseLeave={handleMouseUp}
         >
-          <DialogHeader className="sr-only">
-             <DialogTitle>Imagem em tela cheia</DialogTitle>
-             <DialogDescription>Visualize e interaja com a imagem selecionada.</DialogDescription>
+          <DialogHeader className="p-4">
+             <DialogTitle className="sr-only">Imagem em tela cheia</DialogTitle>
+             <DialogDescription className="sr-only">Visualize e interaja com a imagem selecionada.</DialogDescription>
           </DialogHeader>
           {selectedItem && (
             <>
