@@ -273,9 +273,12 @@ export default function PlateGalleryPage() {
       if (imageErrors[item.id]) return false;
       
       const typeFilterMatch = filter === 'all' || item.BodyType === filter;
+      
+      const normalizedSearch = searchQuery.toLowerCase();
       const searchFilterMatch = !searchQuery || 
-        (item.Marca && item.Marca.toLowerCase().includes(searchQuery.toLowerCase())) ||
-        (item.Model && item.Model.toLowerCase().includes(searchQuery.toLowerCase()));
+        (item.Marca && item.Marca.toLowerCase().includes(normalizedSearch)) ||
+        (item.Model && item.Model.toLowerCase().includes(normalizedSearch)) ||
+        (item["License Plate"] && item["License Plate"].toLowerCase().includes(normalizedSearch));
 
       return typeFilterMatch && searchFilterMatch;
     });
@@ -359,7 +362,7 @@ export default function PlateGalleryPage() {
           <div className="mt-8 flex flex-col sm:flex-row justify-center items-center gap-4 flex-wrap">
             <div className="relative w-full max-w-xs">
               <Input 
-                placeholder="Pesquisar por marca ou modelo..."
+                placeholder="Pesquisar por placa, marca ou modelo..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-10"
@@ -498,5 +501,3 @@ export default function PlateGalleryPage() {
     </div>
   );
 }
-
-    
