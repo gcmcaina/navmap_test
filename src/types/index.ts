@@ -12,7 +12,3 @@ export type PlateData = {
   CameraID?: string;
   CameraAddress?: string;
 };
-
-    
-
-

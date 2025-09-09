@@ -26,16 +26,18 @@ import {
   FileArchive,
   Clock,
   ChevronDown,
+  Map,
 } from "lucide-react";
 import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible"
-import { cameraAddressMapping } from "@/lib/camera-data";
+import { cameraData } from "@/lib/camera-data";
 import JSZip from "jszip";
 import { saveAs } from "file-saver";
 import { Label } from "@/components/ui/label";
+import Link from "next/link";
 
 
 export default function PlateGalleryPage() {
@@ -124,7 +126,7 @@ export default function PlateGalleryPage() {
           }
           
           const cameraId = cameraIDIndex > -1 ? row[cameraIDIndex] : undefined;
-          const cameraAddress = cameraId ? cameraAddressMapping[cameraId] : undefined;
+          const cameraInfo = cameraId ? cameraData.find(c => c.id === cameraId) : undefined;
 
           return {
             id: `${file.name}-${index}`,
@@ -135,7 +137,7 @@ export default function PlateGalleryPage() {
             "Marca": marca || "Marca não Informada",
             "Model": model,
             "CameraID": cameraId,
-            "CameraAddress": cameraAddress,
+            "CameraAddress": cameraInfo?.address,
           }
         }).filter(item => item["Image URL"]);
         
@@ -399,6 +401,12 @@ export default function PlateGalleryPage() {
                     <span className="sr-only">Toggle Header</span>
                 </div>
             </CollapsibleTrigger>
+            <Button asChild variant="outline">
+              <Link href="/map">
+                <Map className="mr-2 h-4 w-4" />
+                Ver Mapa
+              </Link>
+            </Button>
           </div>
           <CollapsibleContent>
              <div className="text-center">
@@ -536,7 +544,7 @@ export default function PlateGalleryPage() {
           onMouseLeave={handleMouseUp}
         >
           <DialogHeader className="p-4">
-             <DialogTitle>Imagem Ampliada</DialogTitle>
+             <DialogTitle className="sr-only">Imagem Ampliada</DialogTitle>
              <DialogDescription className="sr-only">Visualize e interaja com a imagem selecionada.</DialogDescription>
           </DialogHeader>
           {selectedItem && (
@@ -606,5 +614,3 @@ export default function PlateGalleryPage() {
     </div>
   );
 }
-
-    
