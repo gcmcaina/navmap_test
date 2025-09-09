@@ -26,18 +26,15 @@ import {
   FileArchive,
   Clock,
   ChevronDown,
-  Map,
 } from "lucide-react";
 import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible"
-import { cameraData } from "@/lib/camera-data";
 import JSZip from "jszip";
 import { saveAs } from "file-saver";
 import { Label } from "@/components/ui/label";
-import Link from "next/link";
 
 
 export default function PlateGalleryPage() {
@@ -125,9 +122,6 @@ export default function PlateGalleryPage() {
             model = modelIndex > -1 && row[modelIndex] ? String(row[modelIndex]).trim() : "";
           }
           
-          const cameraId = cameraIDIndex > -1 ? row[cameraIDIndex] : undefined;
-          const cameraInfo = cameraId ? cameraData.find(c => c.id === cameraId) : undefined;
-
           return {
             id: `${file.name}-${index}`,
             "Image URL": row[imageUrlIndex],
@@ -136,8 +130,6 @@ export default function PlateGalleryPage() {
             "BodyType": bodyType,
             "Marca": marca || "Marca não Informada",
             "Model": model,
-            "CameraID": cameraId,
-            "CameraAddress": cameraInfo?.address,
           }
         }).filter(item => item["Image URL"]);
         
@@ -376,7 +368,6 @@ export default function PlateGalleryPage() {
               <p className="text-sm text-muted-foreground">
                 {item.Marca !== "Marca não Informada" ? `${item.Marca} ${item.Model}` : "Marca não Informada"}
               </p>
-              {item.CameraAddress && <p className="text-xs text-muted-foreground flex items-center justify-center gap-1"><Camera className="w-3 h-3"/> {item.CameraAddress}</p>}
               {item["Detected At"] && <p className="text-sm text-muted-foreground">{new Date(item["Detected At"]).toLocaleString()}</p>}
             </div>
           </Card>
@@ -401,12 +392,6 @@ export default function PlateGalleryPage() {
                     <span className="sr-only">Toggle Header</span>
                 </div>
             </CollapsibleTrigger>
-            <Button asChild variant="outline">
-              <Link href="/map">
-                <Map className="mr-2 h-4 w-4" />
-                Ver Mapa
-              </Link>
-            </Button>
           </div>
           <CollapsibleContent>
              <div className="text-center">
@@ -598,9 +583,6 @@ export default function PlateGalleryPage() {
                    )}
                    {selectedItem.Marca && selectedItem.Marca !== 'Marca não Informada' && selectedItem.Model && (
                      <p><span className="font-semibold">Modelo:</span> {selectedItem.Model}</p>
-                   )}
-                   {selectedItem.CameraAddress && (
-                     <p><span className="font-semibold">Câmera:</span> {selectedItem.CameraAddress}</p>
                    )}
                    {selectedItem["Detected At"] && (
                       <p><span className="font-semibold">Detectado em:</span> {new Date(selectedItem["Detected At"]).toLocaleString()}</p>
