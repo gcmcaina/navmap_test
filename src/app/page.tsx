@@ -35,7 +35,7 @@ export default function PlateGalleryPage() {
   const [zoom, setZoom] = useState(1);
   const [position, setPosition] = useState({ x: 0, y: 0 });
   const [isPanning, setIsPanning] = useState(false);
-  const imageRef = useRef<HTMLDivElement>(null);
+  const imageRef = useRef<HTMLImageElement>(null);
   const startPosRef = useRef({ x: 0, y: 0 });
   const [imageErrors, setImageErrors] = useState<Record<string, boolean>>({});
 
@@ -150,10 +150,32 @@ export default function PlateGalleryPage() {
   const handleWheel = (e: React.WheelEvent<HTMLDivElement>) => {
     if (!imageRef.current) return;
     e.preventDefault();
-
+  
     const scaleAmount = 0.1;
     const newZoom = zoom - (e.deltaY > 0 ? scaleAmount : -scaleAmount);
-    setZoom(Math.max(0.5, Math.min(newZoom, 5))); // Clamp zoom level
+    const clampedZoom = Math.max(0.5, Math.min(newZoom, 5));
+  
+    const image = imageRef.current;
+    const rect = image.getBoundingClientRect();
+  
+    // Position of cursor relative to the viewport
+    const mouseX = e.clientX;
+    const mouseY = e.clientY;
+  
+    // Position of cursor relative to the image
+    const imageX = mouseX - rect.left;
+    const imageY = mouseY - rect.top;
+  
+    // The point on the image that should be under the cursor
+    const pointX = (imageX - position.x * zoom) / zoom;
+    const pointY = (imageY - position.y * zoom) / zoom;
+  
+    // The new position of the image
+    const newPosX = (imageX - pointX * clampedZoom) / clampedZoom;
+    const newPosY = (imageY - pointY * clampedZoom) / clampedZoom;
+  
+    setZoom(clampedZoom);
+    setPosition({ x: newPosX, y: newPosY });
   };
 
   const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -161,8 +183,8 @@ export default function PlateGalleryPage() {
       e.preventDefault();
       setIsPanning(true);
       startPosRef.current = {
-        x: e.clientX - position.x,
-        y: e.clientY - position.y,
+        x: e.clientX - position.x * zoom,
+        y: e.clientY - position.y * zoom,
       };
     }
   };
@@ -170,8 +192,8 @@ export default function PlateGalleryPage() {
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
     if (isPanning && imageRef.current) {
       e.preventDefault();
-      const newX = e.clientX - startPosRef.current.x;
-      const newY = e.clientY - startPosRef.current.y;
+      const newX = (e.clientX - startPosRef.current.x) / zoom;
+      const newY = (e.clientY - startPosRef.current.y) / zoom;
       setPosition({ x: newX, y: newY });
     }
   };
@@ -347,11 +369,11 @@ export default function PlateGalleryPage() {
           {selectedImage && (
             <>
             <div
-              ref={imageRef}
               className="relative w-full h-full flex items-center justify-center"
               style={{ cursor: isPanning ? 'grabbing' : (zoom > 1 ? 'grab' : 'default') }}
             >
                 <Image
+                    ref={imageRef}
                     src={selectedImage}
                     alt="Imagem selecionada"
                     width={1000}
@@ -359,7 +381,7 @@ export default function PlateGalleryPage() {
                     className="w-auto h-auto max-w-full max-h-full object-contain rounded-lg transition-transform duration-200"
                     style={{
                       transform: `scale(${zoom}) translate(${position.x}px, ${position.y}px)`,
-                      transformOrigin: 'center center',
+                      transformOrigin: '0 0',
                     }}
                     unoptimized
                     onError={(e) => {
@@ -387,5 +409,7 @@ export default function PlateGalleryPage() {
     </div>
   );
 }
+
+    
 
     
