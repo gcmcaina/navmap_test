@@ -21,6 +21,7 @@ import {
   Bike,
   List,
   Search,
+  Camera,
 } from "lucide-react";
 
 
@@ -77,6 +78,7 @@ export default function PlateGalleryPage() {
         const marcaIndex = findHeaderIndex(["marca"]);
         const modelIndex = findHeaderIndex(["modelo", "model"]);
         const trustLevelIndex = 5; // Column F
+        const cameraIDIndex = 2; // Column C
 
 
         if (imageUrlIndex === -1) {
@@ -112,6 +114,7 @@ export default function PlateGalleryPage() {
             "BodyType": bodyType,
             "Marca": marca || "Marca não Informada",
             "Model": model,
+            "CameraID": cameraIDIndex > -1 ? row[cameraIDIndex] : undefined,
           }
         }).filter(item => item["Image URL"]);
         
@@ -248,6 +251,7 @@ export default function PlateGalleryPage() {
               <p className="text-sm text-muted-foreground">
                 {item.Marca} {item.Marca !== 'Marca não Informada' && item.Model}
               </p>
+              {item.CameraID && <p className="text-xs text-muted-foreground flex items-center justify-center gap-1"><Camera className="w-3 h-3"/> {item.CameraID}</p>}
               {item["Detected At"] && <p className="text-sm text-muted-foreground">{new Date(item["Detected At"]).toLocaleString()}</p>}
             </div>
           </Card>
