@@ -10,7 +10,9 @@ export type PlateData = {
   BodyType?: 'Carro' | 'Moto';
   Marca?: string;
   CameraID?: string;
+  CameraAddress?: string;
 };
 
     
+
 

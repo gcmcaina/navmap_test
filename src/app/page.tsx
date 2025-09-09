@@ -23,6 +23,7 @@ import {
   Search,
   Camera,
 } from "lucide-react";
+import { cameraAddressMapping } from "@/lib/camera-data";
 
 
 export default function PlateGalleryPage() {
@@ -105,6 +106,8 @@ export default function PlateGalleryPage() {
             model = modelIndex > -1 && row[modelIndex] ? String(row[modelIndex]).trim() : "";
           }
           
+          const cameraId = cameraIDIndex > -1 ? row[cameraIDIndex] : undefined;
+          const cameraAddress = cameraId ? cameraAddressMapping[cameraId] : undefined;
 
           return {
             id: `${file.name}-${index}`,
@@ -114,7 +117,8 @@ export default function PlateGalleryPage() {
             "BodyType": bodyType,
             "Marca": marca || "Marca não Informada",
             "Model": model,
-            "CameraID": cameraIDIndex > -1 ? row[cameraIDIndex] : undefined,
+            "CameraID": cameraId,
+            "CameraAddress": cameraAddress,
           }
         }).filter(item => item["Image URL"]);
         
@@ -251,7 +255,7 @@ export default function PlateGalleryPage() {
               <p className="text-sm text-muted-foreground">
                 {item.Marca} {item.Marca !== 'Marca não Informada' && item.Model}
               </p>
-              {item.CameraID && <p className="text-xs text-muted-foreground flex items-center justify-center gap-1"><Camera className="w-3 h-3"/> {item.CameraID}</p>}
+              {item.CameraAddress && <p className="text-xs text-muted-foreground flex items-center justify-center gap-1"><Camera className="w-3 h-3"/> {item.CameraAddress}</p>}
               {item["Detected At"] && <p className="text-sm text-muted-foreground">{new Date(item["Detected At"]).toLocaleString()}</p>}
             </div>
           </Card>
@@ -413,7 +417,3 @@ export default function PlateGalleryPage() {
     </div>
   );
 }
-
-    
-
-    
