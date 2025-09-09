@@ -6,13 +6,15 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { ChevronLeft } from 'lucide-react';
-
-const Map = dynamic(() => import('@/components/map'), {
-  loading: () => <p>A map is loading</p>,
-  ssr: false
-});
+import { useMemo } from 'react';
 
 const MapPage = () => {
+  // Dynamically import the Map component with ssr disabled.
+  const Map = useMemo(() => dynamic(() => import('@/components/map'), {
+    loading: () => <p>A map is loading</p>,
+    ssr: false
+  }), []);
+
   return (
     <div className="min-h-screen bg-background text-foreground flex flex-col">
        <header className="p-4 border-b">
