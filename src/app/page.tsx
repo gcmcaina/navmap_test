@@ -8,7 +8,7 @@ import type { PlateData } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import {
   Upload,
@@ -22,14 +22,19 @@ import {
   List,
   Search,
   Camera,
+  Download,
+  FileArchive,
 } from "lucide-react";
 import { cameraAddressMapping } from "@/lib/camera-data";
+import JSZip from "jszip";
+import { saveAs } from "file-saver";
 
 
 export default function PlateGalleryPage() {
   const [data, setData] = useState<PlateData[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [isDownloading, setIsDownloading] = useState(false);
+  const [selectedItem, setSelectedItem] = useState<PlateData | null>(null);
   const [filter, setFilter] = useState<'all' | 'Carro' | 'Moto'>('all');
   const [searchQuery, setSearchQuery] = useState("");
   const { toast } = useToast();
@@ -148,8 +153,8 @@ export default function PlateGalleryPage() {
     reader.readAsBinaryString(file);
   };
 
-  const handleImageClick = (url: string) => {
-    setSelectedImage(url);
+  const handleImageClick = (item: PlateData) => {
+    setSelectedItem(item);
     setZoom(1);
     setPosition({ x: 0, y: 0 });
   };
@@ -218,6 +223,51 @@ export default function PlateGalleryPage() {
     setImageErrors(prev => ({...prev, [id]: true}));
   }
 
+  const handleDownloadAll = async () => {
+    if (isDownloading) return;
+    setIsDownloading(true);
+    toast({
+      title: "Preparando Download",
+      description: "Iniciando o download de todas as imagens filtradas. Isso pode levar alguns instantes.",
+    });
+
+    const zip = new JSZip();
+    const imagePromises = filteredData.map(async (item) => {
+      try {
+        const response = await fetch(item["Image URL"]);
+        if (!response.ok) throw new Error(`Falha ao buscar imagem: ${item["Image URL"]}`);
+        const blob = await response.blob();
+        const filename = `${item["License Plate"] || 'sem-placa'}_${item.id}.jpg`;
+        zip.file(filename, blob);
+      } catch (error) {
+        console.error(`Não foi possível baixar a imagem ${item["Image URL"]}:`, error);
+        // Não adiciona ao zip se falhar
+      }
+    });
+
+    await Promise.all(imagePromises);
+
+    zip.generateAsync({ type: "blob" })
+      .then((content) => {
+        saveAs(content, "imagens_lpr.zip");
+        toast({
+          title: "Download Concluído",
+          description: "O arquivo .zip com as imagens foi baixado.",
+        });
+      })
+      .catch((err) => {
+        toast({
+          variant: "destructive",
+          title: "Erro no Download",
+          description: "Ocorreu um erro ao criar o arquivo .zip.",
+        });
+        console.error("Erro ao gerar zip:", err);
+      })
+      .finally(() => {
+        setIsDownloading(false);
+      });
+  };
+
   const filteredData = useMemo(() => {
     return data.filter(item => {
       if (imageErrors[item.id]) return false;
@@ -237,7 +287,7 @@ export default function PlateGalleryPage() {
           <Card
             key={item.id}
             className="overflow-hidden group transition-all duration-300 hover:shadow-xl cursor-pointer"
-            onClick={() => handleImageClick(item["Image URL"])}
+            onClick={() => handleImageClick(item)}
           >
             <div className="relative w-full aspect-square bg-muted">
               <Image
@@ -306,7 +356,7 @@ export default function PlateGalleryPage() {
         </Card>
 
         {data.length > 0 && (
-          <div className="mt-8 flex flex-col sm:flex-row justify-center items-center gap-4">
+          <div className="mt-8 flex flex-col sm:flex-row justify-center items-center gap-4 flex-wrap">
             <div className="relative w-full max-w-xs">
               <Input 
                 placeholder="Pesquisar por marca ou modelo..."
@@ -330,6 +380,10 @@ export default function PlateGalleryPage() {
                 Motos
               </Button>
             </div>
+             <Button onClick={handleDownloadAll} disabled={isDownloading || filteredData.length === 0}>
+                {isDownloading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileArchive className="mr-2 h-4 w-4" />}
+                {isDownloading ? 'Baixando...' : `Baixar ${filteredData.length} Imagens`}
+              </Button>
           </div>
         )}
 
@@ -365,24 +419,27 @@ export default function PlateGalleryPage() {
         </main>
       </div>
 
-      <Dialog open={!!selectedImage} onOpenChange={(open) => !open && setSelectedImage(null)}>
-        <DialogContent className="max-w-7xl w-full h-[90vh] p-0 bg-transparent border-0 flex items-center justify-center overflow-hidden"
+      <Dialog open={!!selectedItem} onOpenChange={(open) => !open && setSelectedItem(null)}>
+        <DialogContent className="max-w-7xl w-full h-[95vh] p-2 flex flex-col"
           onWheel={handleWheel}
           onMouseDown={handleMouseDown}
           onMouseMove={handleMouseMove}
           onMouseUp={handleMouseUp}
           onMouseLeave={handleMouseUp}
         >
-          <DialogTitle className="sr-only">Imagem em tela cheia</DialogTitle>
-          {selectedImage && (
+          <DialogHeader className="sr-only">
+             <DialogTitle>Imagem em tela cheia</DialogTitle>
+             <DialogDescription>Visualize e interaja com a imagem selecionada.</DialogDescription>
+          </DialogHeader>
+          {selectedItem && (
             <>
             <div
-              className="relative w-full h-full flex items-center justify-center"
+              className="relative w-full flex-grow flex items-center justify-center overflow-hidden rounded-md"
               style={{ cursor: isPanning ? 'grabbing' : (zoom > 1 ? 'grab' : 'default') }}
             >
                 <Image
                     ref={imageRef}
-                    src={selectedImage}
+                    src={selectedItem["Image URL"]}
                     alt="Imagem selecionada"
                     width={1000}
                     height={1000}
@@ -395,11 +452,13 @@ export default function PlateGalleryPage() {
                     onError={(e) => {
                       e.currentTarget.src = 'https://placehold.co/800x800.png'
                       e.currentTarget.dataset.aiHint = "broken image";
-                      setSelectedImage('https://placehold.co/800x800.png');
+                      if (selectedItem) {
+                        setSelectedItem({...selectedItem, "Image URL": 'https://placehold.co/800x800.png' });
+                      }
                     }}
                 />
             </div>
-             <div className="absolute bottom-4 right-4 flex gap-2">
+             <div className="absolute bottom-4 right-4 flex gap-2 bg-background/70 p-2 rounded-lg">
                 <Button variant="secondary" size="icon" onClick={() => setZoom(z => Math.max(0.5, z-0.2))}>
                   <ZoomOut />
                 </Button>
@@ -409,7 +468,29 @@ export default function PlateGalleryPage() {
                 <Button variant="secondary" size="icon" onClick={handleResetZoom}>
                   <RotateCcw />
                 </Button>
+                <Button variant="secondary" size="icon" asChild>
+                  <a href={selectedItem["Image URL"]} download={`${selectedItem["License Plate"] || 'imagem'}.jpg`} target="_blank">
+                    <Download />
+                  </a>
+                </Button>
             </div>
+             <div className="flex-shrink-0 p-4 bg-muted/50 rounded-b-lg mt-2">
+                <h3 className="text-xl font-bold">{selectedItem["License Plate"]}</h3>
+                <div className="text-sm text-muted-foreground grid grid-cols-2 gap-x-4 gap-y-1 mt-2">
+                   {selectedItem.Marca && selectedItem.Marca !== 'Marca não Informada' && (
+                     <p><span className="font-semibold">Marca:</span> {selectedItem.Marca}</p>
+                   )}
+                   {selectedItem.Marca && selectedItem.Marca !== 'Marca não Informada' && selectedItem.Model && (
+                     <p><span className="font-semibold">Modelo:</span> {selectedItem.Model}</p>
+                   )}
+                   {selectedItem.CameraAddress && (
+                     <p><span className="font-semibold">Câmera:</span> {selectedItem.CameraAddress}</p>
+                   )}
+                   {selectedItem["Detected At"] && (
+                      <p><span className="font-semibold">Detectado em:</span> {new Date(selectedItem["Detected At"]).toLocaleString()}</p>
+                   )}
+                </div>
+              </div>
             </>
           )}
         </DialogContent>
@@ -417,3 +498,5 @@ export default function PlateGalleryPage() {
     </div>
   );
 }
+
+    
