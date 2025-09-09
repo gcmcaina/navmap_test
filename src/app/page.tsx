@@ -8,7 +8,7 @@ import type { PlateData } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import {
   Upload,
@@ -343,6 +343,7 @@ export default function PlateGalleryPage() {
           onMouseUp={handleMouseUp}
           onMouseLeave={handleMouseUp}
         >
+          <DialogTitle className="sr-only">Imagem em tela cheia</DialogTitle>
           {selectedImage && (
             <>
             <div
@@ -386,3 +387,5 @@ export default function PlateGalleryPage() {
     </div>
   );
 }
+
+    
