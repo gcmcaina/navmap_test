@@ -345,7 +345,7 @@ export default function PlateGalleryPage() {
           const imgProps = doc.getImageProperties(dataUrl);
           const imgHeight = 50;
           const imgWidth = (imgProps.width * imgHeight) / imgProps.height;
-          doc.addImage(dataUrl, 'JPEG', margin, y, imgWidth, imgHeight);
+          doc.addImage(dataUrl, 'JPEG', margin, y, imgWidth, imgHeight, undefined, 'FAST');
 
         } catch (e) {
           doc.text('Imagem indisponível', margin, y + 25);
