@@ -342,9 +342,8 @@ export default function PlateGalleryPage() {
             reader.onerror = reject;
             reader.readAsDataURL(blob);
           });
-          const imgProps = doc.getImageProperties(dataUrl);
           const imgHeight = 50;
-          const imgWidth = (imgProps.width * imgHeight) / imgProps.height;
+          const imgWidth = 80; // Fixed width
           doc.addImage(dataUrl, 'JPEG', margin, y, imgWidth, imgHeight, undefined, 'FAST');
 
         } catch (e) {
