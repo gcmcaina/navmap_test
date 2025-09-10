@@ -308,7 +308,6 @@ export default function PlateGalleryPage() {
           const canvas = await html2canvas(content, {
             scale: 2,
             useCORS: true,
-            allowTaint: true,
           });
           
           const imgData = canvas.toDataURL('image/png');
@@ -681,3 +680,5 @@ export default function PlateGalleryPage() {
     </div>
   );
 }
+
+    
