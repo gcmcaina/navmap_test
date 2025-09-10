@@ -42,7 +42,7 @@ import Link from "next/link";
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import { ReportTemplate } from '@/lib/report-template';
-import ReactDOM from 'react-dom';
+import { createRoot } from 'react-dom/client';
 
 
 export default function PlateGalleryPage() {
@@ -293,20 +293,21 @@ export default function PlateGalleryPage() {
       description: 'Aguarde enquanto o relatório em PDF é preparado.',
     });
   
-    // Cria um container temporário para renderizar o template
     const reportContainer = document.createElement('div');
     reportContainer.style.position = 'absolute';
     reportContainer.style.left = '-9999px';
     document.body.appendChild(reportContainer);
   
-    // Renderiza o componente do template no container
-    ReactDOM.render(<ReportTemplate data={filteredData} />, reportContainer, async () => {
+    const root = createRoot(reportContainer);
+    root.render(<ReportTemplate data={filteredData} />);
+  
+    setTimeout(async () => {
       const content = reportContainer.querySelector('#report-content') as HTMLElement;
       if (content) {
         try {
           const canvas = await html2canvas(content, {
             scale: 2,
-            useCORS: true, // Tenta carregar imagens de outros domínios
+            useCORS: true,
             allowTaint: true,
           });
           
@@ -333,11 +334,10 @@ export default function PlateGalleryPage() {
           });
         }
       }
-      // Limpa o container
-      ReactDOM.unmountComponentAtNode(reportContainer);
+      root.unmount();
       document.body.removeChild(reportContainer);
       setIsGeneratingReport(false);
-    });
+    }, 1000); 
   };
 
   const filteredData = useMemo(() => {
