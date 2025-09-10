@@ -376,7 +376,11 @@ export default function PlateGalleryPage() {
               <p className="text-sm text-muted-foreground">
                 {item.Marca !== "Marca não Informada" ? `${item.Marca} ${item.Model}` : "Marca não Informada"}
               </p>
-              {item["CameraAddress"] && <p className="text-xs text-muted-foreground truncate">{item["CameraAddress"]}</p>}
+              {item.CameraAddress && item.CameraID && (
+                <Link href={`https://smartsampa.sentinelx.com.br/cameras/cameras/details/${item.CameraID}`} target="_blank" className="text-xs text-muted-foreground truncate hover:underline">
+                  {item.CameraAddress}
+                </Link>
+              )}
               {item["Detected At"] && <p className="text-sm text-muted-foreground">{new Date(item["Detected At"]).toLocaleString()}</p>}
             </div>
           </Card>
@@ -596,8 +600,12 @@ export default function PlateGalleryPage() {
                    {selectedItem["Detected At"] && (
                       <p><span className="font-semibold">Detectado em:</span> {new Date(selectedItem["Detected At"]).toLocaleString()}</p>
                    )}
-                   {selectedItem.CameraAddress && (
-                      <p><span className="font-semibold">Local:</span> {selectedItem.CameraAddress}</p>
+                   {selectedItem.CameraAddress && selectedItem.CameraID && (
+                     <p><span className="font-semibold">Local:</span>{' '}
+                       <Link href={`https://smartsampa.sentinelx.com.br/cameras/cameras/details/${selectedItem.CameraID}`} target="_blank" className="hover:underline">
+                         {selectedItem.CameraAddress}
+                       </Link>
+                     </p>
                    )}
                 </div>
               </div>
