@@ -290,18 +290,16 @@ export default function PlateGalleryPage() {
     setIsGeneratingReport(true);
     toast({
       title: 'Gerando Relatório',
-      description: 'Aguarde enquanto o relatório em PDF é preparado.',
+      description: 'Aguarde enquanto o relatório em PDF é preparado. Isso pode levar um momento...',
     });
   
     const reportContainer = document.createElement('div');
     reportContainer.style.position = 'absolute';
     reportContainer.style.left = '-9999px';
+    reportContainer.style.top = '-9999px';
     document.body.appendChild(reportContainer);
   
-    const root = createRoot(reportContainer);
-    root.render(<ReportTemplate data={filteredData} />);
-  
-    setTimeout(async () => {
+    const onImagesLoaded = async () => {
       const content = reportContainer.querySelector('#report-content') as HTMLElement;
       if (content) {
         try {
@@ -336,7 +334,10 @@ export default function PlateGalleryPage() {
       root.unmount();
       document.body.removeChild(reportContainer);
       setIsGeneratingReport(false);
-    }, 1000); 
+    };
+
+    const root = createRoot(reportContainer);
+    root.render(<ReportTemplate data={filteredData} onImagesLoaded={onImagesLoaded} />);
   };
 
   const filteredData = useMemo(() => {
@@ -680,7 +681,3 @@ export default function PlateGalleryPage() {
     </div>
   );
 }
-
-    
-
-    

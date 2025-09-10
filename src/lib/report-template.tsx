@@ -1,19 +1,27 @@
 
-import React from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import type { PlateData } from '@/types';
-import Image from "next/image";
 
 interface ReportTemplateProps {
   data: PlateData[];
   title?: string;
+  onImagesLoaded?: () => void;
 }
 
-// Este é o componente que define o layout do seu relatório em PDF.
-// Você pode editar o estilo e a estrutura dele como desejar.
-// Use classes do Tailwind CSS para estilizar. Lembre-se que nem todos os estilos
-// CSS são totalmente suportados pelo html2canvas e jsPDF. Teste as alterações.
+export const ReportTemplate: React.FC<ReportTemplateProps> = ({ data, title = "Relatório de Veículos", onImagesLoaded }) => {
+  const imageRefs = useRef<(HTMLImageElement | null)[]>([]);
+  const [loadedImages, setLoadedImages] = useState(0);
 
-export const ReportTemplate: React.FC<ReportTemplateProps> = ({ data, title = "Relatório de Veículos" }) => {
+  useEffect(() => {
+    if (onImagesLoaded && loadedImages === data.length) {
+      onImagesLoaded();
+    }
+  }, [loadedImages, data.length, onImagesLoaded]);
+
+  const handleImageLoad = () => {
+    setLoadedImages(prev => prev + 1);
+  };
+
   return (
     <div id="report-content" className="p-8 bg-white text-black">
       <header className="mb-8 text-center">
@@ -24,16 +32,17 @@ export const ReportTemplate: React.FC<ReportTemplateProps> = ({ data, title = "R
       
       <main>
         <div className="grid grid-cols-1 gap-6">
-          {data.map((item) => (
-            <div key={item.id} className="p-4 border border-gray-300 rounded-lg flex items-start gap-4">
+          {data.map((item, index) => (
+            <div key={item.id} className="p-4 border border-gray-300 rounded-lg flex items-start gap-4 break-inside-avoid">
               <div className="flex-shrink-0 w-48 h-48 relative">
-                 {/* A tag Image do Next.js não funciona bem aqui, usamos a tag <img> padrão */}
-                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img 
+                  ref={el => imageRefs.current[index] = el}
                   src={item['Image URL']} 
                   alt={item['License Plate'] || 'Veículo'} 
                   className="w-full h-full object-cover rounded-md"
-                  crossOrigin="anonymous" // Importante para o html2canvas
+                  crossOrigin="anonymous"
+                  onLoad={handleImageLoad}
+                  onError={handleImageLoad} // Count errors as "loaded" to not block PDF generation
                 />
               </div>
               <div className="flex-grow">
