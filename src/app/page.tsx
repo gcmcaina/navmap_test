@@ -293,21 +293,48 @@ export default function PlateGalleryPage() {
       description: 'Aguarde enquanto o relatório em PDF é preparado. Isso pode levar um momento...',
     });
   
+    // 1. Pre-load all images and convert them to data URIs
+    const preloadedDataPromises = filteredData.map(item =>
+      fetch(item['Image URL'])
+        .then(response => response.blob())
+        .then(blob => new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result as string);
+          reader.onerror = reject;
+          reader.readAsDataURL(blob);
+        }))
+        .then(dataUrl => ({
+          ...item,
+          preloadedImageUrl: dataUrl,
+        }))
+        .catch(err => {
+          console.error(`Failed to load image for report: ${item['Image URL']}`, err);
+          return { ...item, preloadedImageUrl: 'https://placehold.co/300x300.png' }; // Fallback
+        })
+    );
+  
+    const preloadedData = await Promise.all(preloadedDataPromises);
+  
+    // 2. Render the component with preloaded images
     const reportContainer = document.createElement('div');
     reportContainer.style.position = 'absolute';
     reportContainer.style.left = '-9999px';
     reportContainer.style.top = '-9999px';
     document.body.appendChild(reportContainer);
   
-    const onImagesLoaded = async () => {
+    const root = createRoot(reportContainer);
+    root.render(<ReportTemplate data={preloadedData} />);
+  
+    // 3. Give React a moment to render the component
+    setTimeout(async () => {
       const content = reportContainer.querySelector('#report-content') as HTMLElement;
       if (content) {
         try {
           const canvas = await html2canvas(content, {
             scale: 2,
-            useCORS: true,
+            useCORS: true, // Still useful for fonts or other assets
           });
-          
+  
           const imgData = canvas.toDataURL('image/png');
           const pdf = new jsPDF({
             orientation: 'p',
@@ -329,15 +356,14 @@ export default function PlateGalleryPage() {
             title: "Erro ao Gerar Relatório",
             description: "Não foi possível gerar o PDF. Verifique o console para mais detalhes.",
           });
+        } finally {
+          // 4. Cleanup
+          root.unmount();
+          document.body.removeChild(reportContainer);
+          setIsGeneratingReport(false);
         }
       }
-      root.unmount();
-      document.body.removeChild(reportContainer);
-      setIsGeneratingReport(false);
-    };
-
-    const root = createRoot(reportContainer);
-    root.render(<ReportTemplate data={filteredData} onImagesLoaded={onImagesLoaded} />);
+    }, 100); // A short timeout to ensure the DOM is updated
   };
 
   const filteredData = useMemo(() => {
@@ -681,3 +707,5 @@ export default function PlateGalleryPage() {
     </div>
   );
 }
+
+    

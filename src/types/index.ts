@@ -11,6 +11,7 @@ export type PlateData = {
   Marca?: string;
   CameraID?: string;
   CameraAddress?: string;
+  preloadedImageUrl?: string;
 };
 
     

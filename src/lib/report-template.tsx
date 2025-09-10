@@ -1,33 +1,13 @@
 
-import React, { useRef, useEffect, useState } from 'react';
+import React from 'react';
 import type { PlateData } from '@/types';
 
 interface ReportTemplateProps {
-  data: PlateData[];
+  data: (PlateData & { preloadedImageUrl?: string })[];
   title?: string;
-  onImagesLoaded?: () => void;
 }
 
-export const ReportTemplate: React.FC<ReportTemplateProps> = ({ data, title = "Relatório de Veículos", onImagesLoaded }) => {
-  const imageRefs = useRef<(HTMLImageElement | null)[]>([]);
-  const [loadedImagesCount, setLoadedImagesCount] = useState(0);
-  const totalImages = data.length;
-
-  useEffect(() => {
-    if (onImagesLoaded && loadedImagesCount === totalImages) {
-      onImagesLoaded();
-    }
-  }, [loadedImagesCount, totalImages, onImagesLoaded]);
-
-  const handleImageLoad = () => {
-    setLoadedImagesCount(prev => prev + 1);
-  };
-
-  const handleImageError = () => {
-    // Also count errors as "loaded" to prevent the process from stalling.
-    setLoadedImagesCount(prev => prev + 1);
-  };
-
+export const ReportTemplate: React.FC<ReportTemplateProps> = ({ data, title = "Relatório de Veículos" }) => {
   return (
     <div id="report-content" className="p-8 bg-white text-black">
       <header className="mb-8 text-center">
@@ -38,17 +18,13 @@ export const ReportTemplate: React.FC<ReportTemplateProps> = ({ data, title = "R
       
       <main>
         <div className="grid grid-cols-1 gap-6">
-          {data.map((item, index) => (
+          {data.map((item) => (
             <div key={item.id} className="p-4 border border-gray-300 rounded-lg flex items-start gap-4 break-inside-avoid">
               <div className="flex-shrink-0 w-48 h-48 relative">
                 <img 
-                  ref={el => imageRefs.current[index] = el}
-                  src={item['Image URL']} 
+                  src={item.preloadedImageUrl || item['Image URL']}
                   alt={item['License Plate'] || 'Veículo'} 
                   className="w-full h-full object-cover rounded-md"
-                  crossOrigin="anonymous"
-                  onLoad={handleImageLoad}
-                  onError={handleImageError}
                 />
               </div>
               <div className="flex-grow">
@@ -76,3 +52,5 @@ export const ReportTemplate: React.FC<ReportTemplateProps> = ({ data, title = "R
     </div>
   );
 };
+
+    
