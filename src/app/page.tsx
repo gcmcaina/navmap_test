@@ -40,9 +40,6 @@ import { Label } from "@/components/ui/label";
 import { cameraAddressMapping } from "@/lib/camera-data";
 import Link from "next/link";
 import jsPDF from 'jspdf';
-import html2canvas from 'html2canvas';
-import { ReportTemplate } from '@/lib/report-template';
-import { createRoot } from 'react-dom/client';
 
 
 export default function PlateGalleryPage() {
@@ -293,77 +290,91 @@ export default function PlateGalleryPage() {
       description: 'Aguarde enquanto o relatório em PDF é preparado. Isso pode levar um momento...',
     });
   
-    // 1. Pre-load all images and convert them to data URIs
-    const preloadedDataPromises = filteredData.map(item =>
-      fetch(item['Image URL'])
-        .then(response => response.blob())
-        .then(blob => new Promise<string>((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onloadend = () => resolve(reader.result as string);
-          reader.onerror = reject;
-          reader.readAsDataURL(blob);
-        }))
-        .then(dataUrl => ({
-          ...item,
-          preloadedImageUrl: dataUrl,
-        }))
-        .catch(err => {
-          console.error(`Failed to load image for report: ${item['Image URL']}`, err);
-          return { ...item, preloadedImageUrl: 'https://placehold.co/300x300.png' }; // Fallback
-        })
-    );
+    try {
+      const doc = new jsPDF();
+      const margin = 15;
+      const pageHeight = doc.internal.pageSize.getHeight();
+      let y = margin;
   
-    const preloadedData = await Promise.all(preloadedDataPromises);
+      // Header
+      doc.setFontSize(18);
+      doc.text("Relatório de Veículos", margin, y);
+      y += 10;
+      doc.setFontSize(10);
+      doc.text(`Gerado em: ${new Date().toLocaleString('pt-BR')}`, margin, y);
+      y += 5;
+      doc.text(`Total de veículos: ${filteredData.length}`, margin, y);
+      y += 10;
   
-    // 2. Render the component with preloaded images
-    const reportContainer = document.createElement('div');
-    reportContainer.style.position = 'absolute';
-    reportContainer.style.left = '-9999px';
-    reportContainer.style.top = '-9999px';
-    document.body.appendChild(reportContainer);
-  
-    const root = createRoot(reportContainer);
-    root.render(<ReportTemplate data={preloadedData} />);
-  
-    // 3. Give React a moment to render the component
-    setTimeout(async () => {
-      const content = reportContainer.querySelector('#report-content') as HTMLElement;
-      if (content) {
-        try {
-          const canvas = await html2canvas(content, {
-            scale: 2,
-            useCORS: true, // Still useful for fonts or other assets
-          });
-  
-          const imgData = canvas.toDataURL('image/png');
-          const pdf = new jsPDF({
-            orientation: 'p',
-            unit: 'px',
-            format: [canvas.width, canvas.height]
-          });
-  
-          pdf.addImage(imgData, 'PNG', 0, 0, canvas.width, canvas.height);
-          pdf.save('relatorio_lpr.pdf');
-  
-          toast({
-            title: 'Relatório Gerado',
-            description: 'O seu relatório em PDF foi baixado.',
-          });
-        } catch (error) {
-          console.error("Erro ao gerar PDF:", error);
-          toast({
-            variant: "destructive",
-            title: "Erro ao Gerar Relatório",
-            description: "Não foi possível gerar o PDF. Verifique o console para mais detalhes.",
-          });
-        } finally {
-          // 4. Cleanup
-          root.unmount();
-          document.body.removeChild(reportContainer);
-          setIsGeneratingReport(false);
+      // Helper function to add an item
+      const addItem = async (item: PlateData) => {
+        const itemHeight = 60; // Approximate height for each item block
+        if (y + itemHeight > pageHeight - margin) {
+          doc.addPage();
+          y = margin;
         }
+  
+        doc.setFontSize(12).setFont(undefined, 'bold');
+        doc.text(item['License Plate'] || 'Placa não identificada', margin + 60, y);
+  
+        doc.setFontSize(10).setFont(undefined, 'normal');
+        let textY = y + 5;
+  
+        if (item.Marca && item.Marca !== "Marca não Informada") {
+          doc.text(`Marca/Modelo: ${item.Marca} ${item.Model}`, margin + 60, textY);
+          textY += 5;
+        }
+        if (item['Detected At']) {
+          doc.text(`Data/Hora: ${new Date(item['Detected At']).toLocaleString('pt-BR')}`, margin + 60, textY);
+          textY += 5;
+        }
+        if (item.CameraAddress) {
+          doc.text(`Localização: ${item.CameraAddress}`, margin + 60, textY);
+          textY += 5;
+        }
+        
+        try {
+          const response = await fetch(item['Image URL']);
+          const blob = await response.blob();
+          const dataUrl = await new Promise<string>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result as string);
+            reader.onerror = reject;
+            reader.readAsDataURL(blob);
+          });
+          const imgProps = doc.getImageProperties(dataUrl);
+          const imgHeight = 50;
+          const imgWidth = (imgProps.width * imgHeight) / imgProps.height;
+          doc.addImage(dataUrl, 'JPEG', margin, y, imgWidth, imgHeight);
+
+        } catch (e) {
+          doc.text('Imagem indisponível', margin, y + 25);
+          console.error(`Failed to load image for report: ${item['Image URL']}`, e);
+        }
+
+        y += itemHeight; // Move to the next item position
+      };
+  
+      for (const item of filteredData) {
+        await addItem(item);
       }
-    }, 100); // A short timeout to ensure the DOM is updated
+  
+      doc.save('relatorio_lpr.pdf');
+  
+      toast({
+        title: 'Relatório Gerado',
+        description: 'O seu relatório em PDF foi baixado.',
+      });
+    } catch (error) {
+      console.error("Erro ao gerar PDF:", error);
+      toast({
+        variant: "destructive",
+        title: "Erro ao Gerar Relatório",
+        description: "Não foi possível gerar o PDF. Verifique o console para mais detalhes.",
+      });
+    } finally {
+      setIsGeneratingReport(false);
+    }
   };
 
   const filteredData = useMemo(() => {
@@ -707,5 +718,3 @@ export default function PlateGalleryPage() {
     </div>
   );
 }
-
-    
