@@ -27,6 +27,7 @@ import {
   Clock,
   ChevronDown,
   Map,
+  FileText,
 } from "lucide-react";
 import {
   Collapsible,
@@ -38,12 +39,17 @@ import { saveAs } from "file-saver";
 import { Label } from "@/components/ui/label";
 import { cameraAddressMapping } from "@/lib/camera-data";
 import Link from "next/link";
+import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
+import { ReportTemplate } from '@/lib/report-template';
+import ReactDOM from 'react-dom';
 
 
 export default function PlateGalleryPage() {
   const [data, setData] = useState<PlateData[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
+  const [isGeneratingReport, setIsGeneratingReport] = useState(false);
   const [selectedItem, setSelectedItem] = useState<PlateData | null>(null);
   const [filter, setFilter] = useState<'all' | 'Carro' | 'Moto'>('all');
   const [searchQuery, setSearchQuery] = useState("");
@@ -279,6 +285,61 @@ export default function PlateGalleryPage() {
       });
   };
 
+  const handleGenerateReport = async () => {
+    if (isGeneratingReport || filteredData.length === 0) return;
+    setIsGeneratingReport(true);
+    toast({
+      title: 'Gerando Relatório',
+      description: 'Aguarde enquanto o relatório em PDF é preparado.',
+    });
+  
+    // Cria um container temporário para renderizar o template
+    const reportContainer = document.createElement('div');
+    reportContainer.style.position = 'absolute';
+    reportContainer.style.left = '-9999px';
+    document.body.appendChild(reportContainer);
+  
+    // Renderiza o componente do template no container
+    ReactDOM.render(<ReportTemplate data={filteredData} />, reportContainer, async () => {
+      const content = reportContainer.querySelector('#report-content') as HTMLElement;
+      if (content) {
+        try {
+          const canvas = await html2canvas(content, {
+            scale: 2,
+            useCORS: true, // Tenta carregar imagens de outros domínios
+            allowTaint: true,
+          });
+          
+          const imgData = canvas.toDataURL('image/png');
+          const pdf = new jsPDF({
+            orientation: 'p',
+            unit: 'px',
+            format: [canvas.width, canvas.height]
+          });
+  
+          pdf.addImage(imgData, 'PNG', 0, 0, canvas.width, canvas.height);
+          pdf.save('relatorio_lpr.pdf');
+  
+          toast({
+            title: 'Relatório Gerado',
+            description: 'O seu relatório em PDF foi baixado.',
+          });
+        } catch (error) {
+          console.error("Erro ao gerar PDF:", error);
+          toast({
+            variant: "destructive",
+            title: "Erro ao Gerar Relatório",
+            description: "Não foi possível gerar o PDF. Verifique o console para mais detalhes.",
+          });
+        }
+      }
+      // Limpa o container
+      ReactDOM.unmountComponentAtNode(reportContainer);
+      document.body.removeChild(reportContainer);
+      setIsGeneratingReport(false);
+    });
+  };
+
   const filteredData = useMemo(() => {
     return data.filter(item => {
       if (imageErrors[item.id]) return false;
@@ -498,6 +559,10 @@ export default function PlateGalleryPage() {
                 {isDownloading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileArchive className="mr-2 h-4 w-4" />}
                 {isDownloading ? 'Baixando...' : `Baixar ${filteredData.length} Imagens`}
               </Button>
+              <Button onClick={handleGenerateReport} disabled={isGeneratingReport || filteredData.length === 0}>
+                {isGeneratingReport ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileText className="mr-2 h-4 w-4" />}
+                {isGeneratingReport ? 'Gerando...' : 'Gerar Relatório'}
+              </Button>
           </div>
         )}
 
@@ -616,5 +681,3 @@ export default function PlateGalleryPage() {
     </div>
   );
 }
-
-    
