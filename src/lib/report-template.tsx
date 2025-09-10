@@ -10,23 +10,29 @@ interface ReportTemplateProps {
 
 export const ReportTemplate: React.FC<ReportTemplateProps> = ({ data, title = "Relatório de Veículos", onImagesLoaded }) => {
   const imageRefs = useRef<(HTMLImageElement | null)[]>([]);
-  const [loadedImages, setLoadedImages] = useState(0);
+  const [loadedImagesCount, setLoadedImagesCount] = useState(0);
+  const totalImages = data.length;
 
   useEffect(() => {
-    if (onImagesLoaded && loadedImages === data.length) {
+    if (onImagesLoaded && loadedImagesCount === totalImages) {
       onImagesLoaded();
     }
-  }, [loadedImages, data.length, onImagesLoaded]);
+  }, [loadedImagesCount, totalImages, onImagesLoaded]);
 
   const handleImageLoad = () => {
-    setLoadedImages(prev => prev + 1);
+    setLoadedImagesCount(prev => prev + 1);
+  };
+
+  const handleImageError = () => {
+    // Also count errors as "loaded" to prevent the process from stalling.
+    setLoadedImagesCount(prev => prev + 1);
   };
 
   return (
     <div id="report-content" className="p-8 bg-white text-black">
       <header className="mb-8 text-center">
         <h1 className="text-3xl font-bold mb-2">{title}</h1>
-        <p className="text-sm text-gray-600">Gerado em: {new Date().toLocaleDateString('pt-BR')} às {new Date().toLocaleTimeString('pt-BR')}</p>
+        <p className="text-sm text-gray-600">Gerado em: {new Date().toLocaleDateString('pt-BR')} às {new Date().toLocaleTimeString('pt-br')}</p>
         <p className="text-sm text-gray-600">Total de veículos: {data.length}</p>
       </header>
       
@@ -42,7 +48,7 @@ export const ReportTemplate: React.FC<ReportTemplateProps> = ({ data, title = "R
                   className="w-full h-full object-cover rounded-md"
                   crossOrigin="anonymous"
                   onLoad={handleImageLoad}
-                  onError={handleImageLoad} // Count errors as "loaded" to not block PDF generation
+                  onError={handleImageError}
                 />
               </div>
               <div className="flex-grow">
