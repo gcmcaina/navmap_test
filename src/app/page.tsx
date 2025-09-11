@@ -324,12 +324,13 @@ export default function PlateGalleryPage() {
             y = margin;
         }
 
-        doc.setFontSize(14).setFont(undefined, 'bold');
+        doc.setFontSize(14).setFont('arial', 'bold');
         doc.text(plate, margin, y);
         y+= 5;
-        doc.setFontSize(10).setFont(undefined, 'normal');
+        doc.setFontSize(10).setFont('arial', 'normal');
         if (firstItem.Marca && firstItem.Marca !== "Marca não Informada") {
-            doc.text(`Marca/Modelo: ${firstItem.Marca} ${firstItem.Model || ''}`, margin, y);
+            doc.text(`Veículo: ${firstItem.Marca} ${firstItem.Model || ''}`, margin, y);
+
             y+= 5;
         }
         y+= 5;
@@ -735,5 +736,3 @@ export default function PlateGalleryPage() {
     </div>
   );
 }
-
-    
