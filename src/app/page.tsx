@@ -303,59 +303,77 @@ export default function PlateGalleryPage() {
       doc.setFontSize(10);
       doc.text(`Gerado em: ${new Date().toLocaleString('pt-BR')}`, margin, y);
       y += 5;
-      doc.text(`Total de veículos: ${filteredData.length}`, margin, y);
-      y += 10;
+      doc.text(`Total de registros: ${filteredData.length}`, margin, y);
+      y += 15;
   
-      // Helper function to add an item
-      const addItem = async (item: PlateData) => {
-        const itemHeight = 60; // Approximate height for each item block
-        if (y + itemHeight > pageHeight - margin) {
-          doc.addPage();
-          y = margin;
+      const groupedByPlate = filteredData.reduce((acc, item) => {
+        const plate = item["License Plate"] || "N/A";
+        if (!acc[plate]) {
+          acc[plate] = [];
         }
-  
-        doc.setFontSize(12).setFont(undefined, 'bold');
-        doc.text(item['License Plate'] || 'Placa não identificada', margin + 60, y);
-  
+        acc[plate].push(item);
+        return acc;
+      }, {} as Record<string, PlateData[]>);
+
+      for (const plate in groupedByPlate) {
+        const items = groupedByPlate[plate];
+        const firstItem = items[0];
+
+        if (y + 20 > pageHeight - margin) {
+            doc.addPage();
+            y = margin;
+        }
+
+        doc.setFontSize(14).setFont(undefined, 'bold');
+        doc.text(plate, margin, y);
+        y+= 5;
         doc.setFontSize(10).setFont(undefined, 'normal');
-        let textY = y + 5;
-  
-        if (item.Marca && item.Marca !== "Marca não Informada") {
-          doc.text(`Marca/Modelo: ${item.Marca} ${item.Model}`, margin + 60, textY);
-          textY += 5;
+        if (firstItem.Marca && firstItem.Marca !== "Marca não Informada") {
+            doc.text(`Marca/Modelo: ${firstItem.Marca} ${firstItem.Model || ''}`, margin, y);
+            y+= 5;
         }
-        if (item['Detected At']) {
-          doc.text(`Data/Hora: ${new Date(item['Detected At']).toLocaleString('pt-BR')}`, margin + 60, textY);
-          textY += 5;
-        }
-        if (item.CameraAddress) {
-          doc.text(`Localização: ${item.CameraAddress}`, margin + 60, textY);
-          textY += 5;
-        }
-        
-        try {
-          const response = await fetch(item['Image URL']);
-          const blob = await response.blob();
-          const dataUrl = await new Promise<string>((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onloadend = () => resolve(reader.result as string);
-            reader.onerror = reject;
-            reader.readAsDataURL(blob);
-          });
-          const imgHeight = 50;
-          const imgWidth = 80; // Fixed width
-          doc.addImage(dataUrl, 'JPEG', margin, y, imgWidth, imgHeight, undefined, 'FAST');
+        y+= 5;
 
-        } catch (e) {
-          doc.text('Imagem indisponível', margin, y + 25);
-          console.error(`Failed to load image for report: ${item['Image URL']}`, e);
-        }
-
-        y += itemHeight; // Move to the next item position
-      };
+        for (const item of items) {
+          const itemHeight = 60; 
+          if (y + itemHeight > pageHeight - margin) {
+            doc.addPage();
+            y = margin;
+          }
+    
+          const textX = margin + 90;
+          let textY = y + 5;
+    
+          if (item['Detected At']) {
+            doc.text(`Data/Hora: ${new Date(item['Detected At']).toLocaleString('pt-BR')}`, textX, textY);
+            textY += 5;
+          }
+          if (item.CameraAddress) {
+            doc.text(`Localização: ${item.CameraAddress}`, textX, textY, { maxWidth: 100 });
+            textY += 10;
+          }
+          
+          try {
+            const response = await fetch(item['Image URL']);
+            const blob = await response.blob();
+            const dataUrl = await new Promise<string>((resolve, reject) => {
+              const reader = new FileReader();
+              reader.onloadend = () => resolve(reader.result as string);
+              reader.onerror = reject;
+              reader.readAsDataURL(blob);
+            });
+            
+            const imgHeight = 50;
+            const imgWidth = 80;
+            doc.addImage(dataUrl, 'JPEG', margin, y, imgWidth, imgHeight, undefined, 'FAST');
   
-      for (const item of filteredData) {
-        await addItem(item);
+          } catch (e) {
+            doc.text('Imagem indisponível', margin, y + 25);
+            console.error(`Failed to load image for report: ${item['Image URL']}`, e);
+          }
+  
+          y += itemHeight;
+        }
       }
   
       doc.save('relatorio_lpr.pdf');
@@ -717,3 +735,5 @@ export default function PlateGalleryPage() {
     </div>
   );
 }
+
+    
