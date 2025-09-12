@@ -293,24 +293,23 @@ export default function PlateGalleryPage() {
   
     try {
       // 1. INICIALIZAÇÃO DO DOCUMENTO PDF
-      // Cria uma nova instância do jsPDF. O 'p' significa modo retrato (portrait).
+      // Cria uma nova instância do jsPDF. 'p' = modo retrato (portrait), 'mm' = milímetros, 'a4' = tamanho da página.
       const doc = new jsPDF('p', 'mm', 'a4');
-      const margin = 15; // Define a margem da página
+      const margin = 15; // Define a margem da página (em mm)
+      const pageWidth = doc.internal.pageSize.getWidth();
       const pageHeight = doc.internal.pageSize.getHeight(); // Pega a altura da página
       let y = margin; // Define a posição vertical inicial (eixo Y)
 
       // 2. CABEÇALHO DO RELATÓRIO
-      // Adiciona o título principal. Você pode alterar o texto, tamanho da fonte e posição.
       doc.setFontSize(18);
       doc.text("Relatório de Veículos", margin, y);
-      y += 10; // Move o eixo Y para baixo
       
-      // Adiciona informações secundárias como data e total de registros.
+      // Adiciona informações secundárias alinhadas à direita.
       doc.setFontSize(10);
-      doc.text(`Gerado em: ${new Date().toLocaleString('pt-BR')}`, margin, y);
+      doc.text(`Gerado em: ${new Date().toLocaleString('pt-BR')}`, pageWidth - margin, y, { align: 'right' });
       y += 5;
-      doc.text(`Total de registros: ${filteredData.length}`, margin, y);
-      y += 15;
+      doc.text(`Total de registros: ${filteredData.length}`, pageWidth - margin, y, { align: 'right' });
+      y += 15; // Move o eixo Y para baixo para o conteúdo principal
   
       // 3. AGRUPAMENTO DOS DADOS
       // Agrupa todos os itens filtrados pela placa do veículo.
@@ -329,9 +328,11 @@ export default function PlateGalleryPage() {
       for (const plate in groupedByPlate) {
         const items = groupedByPlate[plate];
         const firstItem = items[0];
+        const groupHeaderHeight = 20; // Altura estimada para o cabeçalho do grupo (placa, veículo)
+        const firstItemHeight = 85; // Altura estimada para o primeiro item (imagem + texto)
 
-        // Verifica se há espaço na página para o cabeçalho do grupo, se não, adiciona uma nova página.
-        if (y + 20 > pageHeight - margin) {
+        // Verifica se há espaço na página para o cabeçalho do grupo e a primeira imagem. Se não, adiciona uma nova página.
+        if (y + groupHeaderHeight + firstItemHeight > pageHeight - margin) {
             doc.addPage();
             y = margin; // Reseta a posição Y para a margem superior
         }
@@ -339,19 +340,19 @@ export default function PlateGalleryPage() {
         // Adiciona a placa como um título de seção.
         doc.setFontSize(14).setFont('arial', 'bold');
         doc.text(plate, margin, y);
-        y+= 5;
+        y += 8;
         doc.setFontSize(10).setFont('arial', 'normal');
         
         // Adiciona informações da Marca e Modelo (se existirem).
         if (firstItem.Marca && firstItem.Marca !== "Marca não Informada") {
             doc.text(`Veículo: ${firstItem.Marca} ${firstItem.Model || ''}`, margin, y);
-            y+= 5;
+            y += 5;
         }
-        y+= 5; // Espaço extra após o cabeçalho do grupo.
+        y += 5; // Espaço extra após o cabeçalho do grupo.
 
         // 5. LOOP PELAS OCORRÊNCIAS DE CADA VEÍCULO
         for (const item of items) {
-          const itemHeight = 60; // Altura estimada para cada item (imagem + texto)
+          const itemHeight = 85; // Altura estimada para cada item (imagem + texto), aumentada para ter no máximo 3 por página.
           
           // Verifica se o próximo item cabe na página atual, se não, cria uma nova página.
           if (y + itemHeight > pageHeight - margin) {
@@ -361,19 +362,18 @@ export default function PlateGalleryPage() {
     
           // --- Layout de cada item (Imagem e Texto) ---
           
-          // Posição horizontal para os textos (para não colidir com a imagem).
-          // Aumente o valor '90' para mover o texto mais para a direita.
-          const textX = margin + 90;
+          // Posição horizontal para os textos, ajustada para dar mais espaço.
+          const textX = margin + 105; 
           let textY = y + 5; // Posição vertical inicial para o texto deste item.
     
           // Adiciona Data/Hora da detecção.
           if (item['Detected At']) {
             doc.text(`Data/Hora: ${new Date(item['Detected At']).toLocaleString('pt-BR')}`, textX, textY);
-            textY += 5; // Move para a próxima linha de texto.
+            textY += 7; // Aumenta o espaçamento entre as linhas de texto
           }
           // Adiciona a localização da câmera. A opção 'maxWidth' quebra a linha automaticamente se o texto for muito longo.
           if (item.CameraAddress) {
-            doc.text(`Localização: ${item.CameraAddress}`, textX, textY, { maxWidth: 100 });
+            doc.text(`Localização: ${item.CameraAddress}`, textX, textY, { maxWidth: pageWidth - textX - margin });
             textY += 10;
           }
           
@@ -388,15 +388,15 @@ export default function PlateGalleryPage() {
               reader.readAsDataURL(blob);
             });
             
-            // Define o tamanho da imagem no PDF. Altere estes valores para customizar.
-            const imgHeight = 50;
-            const imgWidth = 80;
+            // Define o tamanho da imagem no PDF, um pouco maior que antes.
+            const imgHeight = 70;
+            const imgWidth = 90;
             // Adiciona a imagem ao PDF. 'FAST' é o método de compressão.
             doc.addImage(dataUrl, 'JPEG', margin, y, imgWidth, imgHeight, undefined, 'FAST');
   
           } catch (e) {
             // Se a imagem falhar, adiciona um texto indicando a falha.
-            doc.text('Imagem indisponível', margin, y + 25);
+            doc.text('Imagem indisponível', margin, y + 30);
             console.error(`Failed to load image for report: ${item['Image URL']}`, e);
           }
   
@@ -767,3 +767,4 @@ export default function PlateGalleryPage() {
     </div>
   );
 }
+
