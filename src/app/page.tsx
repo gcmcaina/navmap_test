@@ -687,7 +687,7 @@ export default function PlateGalleryPage() {
                 </DialogDescription>
             </DialogHeader>
             <div className="h-full w-full rounded-md overflow-hidden">
-              <VehicleMap key={mapKey} data={filteredData} />
+              {isMapOpen && <VehicleMap key={mapKey} data={filteredData} />}
             </div>
         </DialogContent>
       </Dialog>
@@ -776,3 +776,5 @@ export default function PlateGalleryPage() {
     </div>
   );
 }
+
+    
