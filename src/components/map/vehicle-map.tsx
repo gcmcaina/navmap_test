@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from 'react';
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import 'leaflet.markercluster/dist/MarkerCluster.css';
@@ -29,7 +30,12 @@ interface VehicleMapProps {
 }
 
 export default function VehicleMap({ data }: VehicleMapProps) {
+  const [isMapReady, setIsMapReady] = useState(false);
   const center: [number, number] = [-23.55052, -46.633303]; // Centro de São Paulo
+
+  useEffect(() => {
+    setIsMapReady(true);
+  }, []);
 
   const markers = data
     .map(item => {
@@ -44,8 +50,8 @@ export default function VehicleMap({ data }: VehicleMapProps) {
     })
     .filter((item): item is PlateData & { position: [number, number] } => item !== null);
 
-  if (typeof window === 'undefined') {
-    return null;
+  if (!isMapReady) {
+    return null; // ou um componente de loading
   }
 
   return (
