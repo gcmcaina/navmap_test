@@ -7,7 +7,7 @@ export type CameraCoordinate = {
 // Por favor, preencha este array com as coordenadas de todas as suas câmeras.
 // O 'id' deve corresponder ao 'CameraID' na sua planilha.
 export const cameraCoordinates: CameraCoordinate[] = [
-  { id: '0023da99-e9f6-4472-900d-df44bf4e8a58', lat: -23.5134, lng: -46.6086 },
+  { id: '0023da99-e9f6-4472-900d-df44bf4e8a58', lat: -23.47051500, lng: -46.57847110 },
   { id: '004f2b73-f924-4ebe-babf-266eafe2f43b', lat: -23.6824, lng: -46.7533 },
   { id: '0073e364-c1d8-4b09-948f-eb056ed29208', lat: -23.5042, lng: -46.6234 },
   { id: '008dbbb2-47fb-4748-915f-e6c95d7bd621', lat: -23.5277, lng: -46.6356 },
@@ -46,4 +46,6 @@ export const cameraCoordinates: CameraCoordinate[] = [
   { id: '045bcab5-f44b-4c96-83ac-bd556c50ed9d', lat: -23.5186, lng: -46.6881 },
   { id: '046b3373-1a10-4ed6-b546-b253e2184daf', lat: -23.5518, lng: -46.5786 },
   { id: '0479b168-34f3-4a0d-b77d-9c0ec91b40b3', lat: -23.4619, lng: -46.6341 },
+  { id: '82e591af-0868-4267-be6f-d5a7e29d6167', lat: -23.4680, lng: -46.5824 }
+
 ];
