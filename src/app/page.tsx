@@ -310,14 +310,10 @@ export default function PlateGalleryPage() {
       doc.setFontSize(10);
       doc.text(headerText, pageWidth - margin, margin, { align: 'right' });
 
-      // Adiciona um espaço extra após o cabeçalho, apenas na primeira página
-      const initialY = margin + 15;
-
       const addItem = async (item: PlateData, itemIndex: number) => {
         const itemsPerPage = 3;
         const pageIndex = Math.floor(itemIndex / itemsPerPage);
         
-        // Adiciona uma nova página se necessário
         if (pageIndex + 1 > currentPage) {
           doc.addPage();
           currentPage++;
@@ -325,16 +321,17 @@ export default function PlateGalleryPage() {
         
         const itemOnPageIndex = itemIndex % itemsPerPage;
         
-        // Define as posições verticais para os 3 "slots" da página
-        let y = margin + (itemOnPageIndex * ((pageHeight - (margin * 2)) / itemsPerPage));
-        
-        // Adiciona o espaço extra apenas para o primeiro item da primeira página
+        const slotHeight = (pageHeight - (margin * 2)) / itemsPerPage;
+        let y = margin + (itemOnPageIndex * slotHeight);
+
+        // Adiciona um espaço extra apenas para o primeiro item da primeira página
+        const initialYOffset = 15;
         if (currentPage === 1 && itemOnPageIndex === 0) {
-            y = initialY;
+            y += initialYOffset;
         }
 
+
         try {
-          // Busca a imagem e a converte para dataUrl
           const response = await fetch(item['Image URL']);
           if (!response.ok) throw new Error('Falha ao buscar imagem.');
           const blob = await response.blob();
@@ -345,7 +342,6 @@ export default function PlateGalleryPage() {
             reader.readAsDataURL(blob);
           });
           
-          // Carrega a imagem para obter suas dimensões e manter o aspect ratio
           const img = new (window as any).Image();
           img.src = dataUrl;
           await new Promise(resolve => { img.onload = resolve; });
@@ -364,15 +360,12 @@ export default function PlateGalleryPage() {
             imgHeight = imgMaxHeight;
           }
 
-          // Posição da imagem (à esquerda)
           const imageX = margin;
           doc.addImage(dataUrl, 'JPEG', imageX, y, imgWidth, imgHeight);
 
-          // Posição do texto (à direita da imagem)
           let textX = margin + imgWidth + 10;
           let textY = y + 5;
 
-          // Adiciona a placa, marca e modelo
           doc.setFontSize(12).setFont("arial", 'bold');
           doc.text(item["License Plate"] || 'N/A', textX, textY);
           textY += 6;
@@ -383,7 +376,6 @@ export default function PlateGalleryPage() {
               textY += 5;
           }
           
-          // Adiciona Data/Hora e Localização
           if (item['Detected At']) {
             doc.text(`Data/Hora: ${new Date(item['Detected At']).toLocaleString('pt-BR')}`, textX, textY);
             textY += 5;
@@ -394,9 +386,7 @@ export default function PlateGalleryPage() {
           }
         } catch (e) {
           console.error(`Falha ao carregar imagem para o relatório: ${item['Image URL']}`, e);
-          // Posição do texto (à direita)
           let textX = margin + 90;
-          // Posição da imagem (à esquerda)
           doc.text('Imagem indisponível', margin, y + 25);
           doc.setFontSize(12).setFont("arial", 'bold');
           doc.text(item["License Plate"] || 'N/A', textX, y + 5);
@@ -791,5 +781,3 @@ export default function PlateGalleryPage() {
     </div>
   );
 }
-
-    
