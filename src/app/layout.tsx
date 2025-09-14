@@ -18,6 +18,17 @@ export default function RootLayout({
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link href="https://fonts.googleapis.com/css2?family=Inter&display=swap" rel="stylesheet"></link>
+        <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+          integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+          crossOrigin=""/>
+        <link
+          rel="stylesheet"
+          href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.css"
+        />
+        <link
+          rel="stylesheet"
+          href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.Default.css"
+        />
       </head>
       <body className="font-body antialiased bg-background">
         {children}

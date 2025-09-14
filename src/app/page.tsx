@@ -40,6 +40,10 @@ import { Label } from "@/components/ui/label";
 import { cameraAddressMapping } from "@/lib/camera-data";
 import Link from "next/link";
 import jsPDF from 'jspdf';
+import dynamic from 'next/dynamic';
+
+
+const VehicleMap = dynamic(() => import('@/components/map/vehicle-map'), { ssr: false });
 
 
 export default function PlateGalleryPage() {
@@ -61,6 +65,7 @@ export default function PlateGalleryPage() {
   const [imageErrors, setImageErrors] = useState<Record<string, boolean>>({});
   const [startTime, setStartTime] = useState('');
   const [endTime, setEndTime] = useState('');
+  const [isMapOpen, setIsMapOpen] = useState(false);
 
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -642,6 +647,10 @@ export default function PlateGalleryPage() {
                 {isGeneratingReport ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileText className="mr-2 h-4 w-4" />}
                 {isGeneratingReport ? 'Gerando...' : 'Gerar Relatório'}
               </Button>
+              <Button onClick={() => setIsMapOpen(true)} disabled={filteredData.length === 0}>
+                <Map className="mr-2 h-4 w-4" />
+                Ver no Mapa
+              </Button>
           </div>
         )}
 
@@ -676,6 +685,21 @@ export default function PlateGalleryPage() {
           )}
         </main>
       </div>
+
+      <Dialog open={isMapOpen} onOpenChange={setIsMapOpen}>
+        <DialogContent className="max-w-7xl w-full h-[95vh] p-2">
+            <DialogHeader>
+                <DialogTitle>Mapa de Câmeras</DialogTitle>
+                <DialogDescription>
+                    Visualização das câmeras no mapa. Use o zoom para agrupar ou desagrupar os marcadores.
+                </DialogDescription>
+            </DialogHeader>
+            <div className="h-full w-full rounded-md overflow-hidden">
+              <VehicleMap data={filteredData} />
+            </div>
+        </DialogContent>
+      </Dialog>
+
 
       <Dialog open={!!selectedItem} onOpenChange={(open) => !open && setSelectedItem(null)}>
         <DialogContent className="max-w-7xl w-full h-[95vh] p-2 flex flex-col"
