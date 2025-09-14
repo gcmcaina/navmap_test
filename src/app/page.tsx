@@ -66,6 +66,7 @@ export default function PlateGalleryPage() {
   const [startTime, setStartTime] = useState('');
   const [endTime, setEndTime] = useState('');
   const [isMapOpen, setIsMapOpen] = useState(false);
+  const [mapKey, setMapKey] = useState(1);
 
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -287,7 +288,6 @@ export default function PlateGalleryPage() {
   };
 
   const handleGenerateReport = async () => {
-    // --- Início da Seção de Geração de PDF ---
     if (isGeneratingReport || filteredData.length === 0) return;
     setIsGeneratingReport(true);
     toast({
@@ -394,7 +394,9 @@ export default function PlateGalleryPage() {
           }
         } catch (e) {
           console.error(`Falha ao carregar imagem para o relatório: ${item['Image URL']}`, e);
+          // Posição do texto (à direita)
           let textX = margin + 90;
+          // Posição da imagem (à esquerda)
           doc.text('Imagem indisponível', margin, y + 25);
           doc.setFontSize(12).setFont("arial", 'bold');
           doc.text(item["License Plate"] || 'N/A', textX, y + 5);
@@ -647,7 +649,12 @@ export default function PlateGalleryPage() {
                 {isGeneratingReport ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileText className="mr-2 h-4 w-4" />}
                 {isGeneratingReport ? 'Gerando...' : 'Gerar Relatório'}
               </Button>
-              <Button onClick={() => setIsMapOpen(true)} disabled={filteredData.length === 0}>
+              <Button onClick={() => {
+                setMapKey(prev => prev + 1);
+                setIsMapOpen(true);
+                }} 
+                disabled={filteredData.length === 0}
+                >
                 <Map className="mr-2 h-4 w-4" />
                 Ver no Mapa
               </Button>
@@ -695,7 +702,7 @@ export default function PlateGalleryPage() {
                 </DialogDescription>
             </DialogHeader>
             <div className="h-full w-full rounded-md overflow-hidden">
-              <VehicleMap data={filteredData} />
+              <VehicleMap key={mapKey} data={filteredData} />
             </div>
         </DialogContent>
       </Dialog>
@@ -784,3 +791,5 @@ export default function PlateGalleryPage() {
     </div>
   );
 }
+
+    

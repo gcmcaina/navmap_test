@@ -1,3 +1,4 @@
+
 "use client";
 
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
@@ -69,3 +70,5 @@ export default function VehicleMap({ data }: VehicleMapProps) {
     </MapContainer>
   );
 }
+
+    
