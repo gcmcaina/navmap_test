@@ -76,6 +76,11 @@ export default function VehicleMap({ data }: { data: PlateData[] }) {
 
         map.addLayer(markers);
 
+        // Força o mapa a se redimensionar para o contêiner
+        setTimeout(() => {
+            map.invalidateSize();
+        }, 100);
+
         // Função de limpeza CRUCIAL para o Fast Refresh do Next.js
         return () => {
             if (mapInstanceRef.current) {
