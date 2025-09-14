@@ -6,7 +6,7 @@ import * as XLSX from "xlsx";
 import Image from "next/image";
 import type { PlateData } from "@/types";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Input }from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
@@ -301,6 +301,7 @@ export default function PlateGalleryPage() {
       const pageWidth = doc.internal.pageSize.getWidth();
       const pageHeight = doc.internal.pageSize.getHeight();
       let currentPage = 1;
+      let itemsOnPage = 0;
 
       // Adiciona o cabeçalho na primeira página
       doc.setFontSize(18);
@@ -310,26 +311,22 @@ export default function PlateGalleryPage() {
       doc.setFontSize(10);
       doc.text(headerText, pageWidth - margin, margin, { align: 'right' });
 
-      const addItem = async (item: PlateData, itemIndex: number) => {
-        const itemsPerPage = 3;
-        const pageIndex = Math.floor(itemIndex / itemsPerPage);
+      for (let i = 0; i < filteredData.length; i++) {
+        const item = filteredData[i];
         
-        if (pageIndex + 1 > currentPage) {
+        if (itemsOnPage === 3) {
           doc.addPage();
           currentPage++;
+          itemsOnPage = 0;
         }
         
-        const itemOnPageIndex = itemIndex % itemsPerPage;
-        
-        const slotHeight = (pageHeight - (margin * 2)) / itemsPerPage;
-        let y = margin + (itemOnPageIndex * slotHeight);
+        const slotHeight = (pageHeight - (margin * 2)) / 3;
+        let y = margin + (itemsOnPage * slotHeight);
 
         // Adiciona um espaço extra apenas para o primeiro item da primeira página
-        const initialYOffset = 15;
-        if (currentPage === 1 && itemOnPageIndex === 0) {
-            y += initialYOffset;
+        if (currentPage === 1 && itemsOnPage === 0) {
+            y += 15;
         }
-
 
         try {
           const response = await fetch(item['Image URL']);
@@ -347,19 +344,20 @@ export default function PlateGalleryPage() {
           await new Promise(resolve => { img.onload = resolve; });
 
           const imgMaxWidth = 80;
-          const imgMaxHeight = 60;
+          const imgMaxHeight = slotHeight - 10; // Deixa uma pequena margem
           let imgWidth = img.width;
           let imgHeight = img.height;
+          const aspectRatio = imgWidth / imgHeight;
 
           if (imgWidth > imgMaxWidth) {
-            imgHeight = (imgMaxWidth / imgWidth) * imgHeight;
             imgWidth = imgMaxWidth;
+            imgHeight = imgWidth / aspectRatio;
           }
           if (imgHeight > imgMaxHeight) {
-            imgWidth = (imgMaxHeight / imgHeight) * imgWidth;
             imgHeight = imgMaxHeight;
+            imgWidth = imgHeight * aspectRatio;
           }
-
+          
           const imageX = margin;
           doc.addImage(dataUrl, 'JPEG', imageX, y, imgWidth, imgHeight);
 
@@ -391,10 +389,7 @@ export default function PlateGalleryPage() {
           doc.setFontSize(12).setFont("arial", 'bold');
           doc.text(item["License Plate"] || 'N/A', textX, y + 5);
         }
-      };
-
-      for (let i = 0; i < filteredData.length; i++) {
-        await addItem(filteredData[i], i);
+        itemsOnPage++;
       }
   
       doc.save('relatorio_lpr.pdf');
