@@ -22,10 +22,6 @@ if (typeof window !== 'undefined') {
   });
 }
 
-const coordinateMap = new Map<string, CameraCoordinate>(
-  cameraCoordinates.map(c => [c.id, c])
-);
-
 interface VehicleMapProps {
   data: PlateData[];
 }
@@ -33,6 +29,10 @@ interface VehicleMapProps {
 export default function VehicleMap({ data }: VehicleMapProps) {
   const center: [number, number] = [-23.55052, -46.633303]; // Centro de São Paulo
   const mapRef = useRef<Map | null>(null);
+
+  const coordinateMap = new Map<string, CameraCoordinate>(
+    cameraCoordinates.map(c => [c.id, c])
+  );
 
   useEffect(() => {
     // A função de limpeza será chamada quando o componente for desmontado
