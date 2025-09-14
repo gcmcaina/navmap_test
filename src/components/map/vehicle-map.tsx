@@ -5,12 +5,12 @@ import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import 'leaflet.markercluster/dist/MarkerCluster.css';
 import 'leaflet.markercluster/dist/MarkerCluster.Default.css';
-import L, { Map } from 'leaflet';
+import L from 'leaflet';
 import MarkerClusterGroup from './marker-cluster-group';
 import type { PlateData } from '@/types';
 import { cameraCoordinates, type CameraCoordinate } from '@/lib/camera-coordinates';
 import Image from 'next/image';
-import { useEffect, useRef } from 'react';
+import { useEffect, useMemo } from 'react';
 
 interface VehicleMapProps {
   data: PlateData[];
@@ -18,12 +18,7 @@ interface VehicleMapProps {
 
 export default function VehicleMap({ data }: VehicleMapProps) {
   const center: [number, number] = [-23.55052, -46.633303]; // Centro de São Paulo
-  const mapRef = useRef<Map | null>(null);
 
-  const coordinateMap = new Map<string, CameraCoordinate>(
-    cameraCoordinates.map(c => [c.id, c])
-  );
-  
   useEffect(() => {
     // Corrige o problema do ícone padrão do Leaflet não aparecer
     if (typeof window !== 'undefined') {
@@ -35,19 +30,12 @@ export default function VehicleMap({ data }: VehicleMapProps) {
       });
     }
   }, []);
+  
+  const coordinateMap = useMemo(() => new Map<string, CameraCoordinate>(
+    cameraCoordinates.map(c => [c.id, c])
+  ), []);
 
-  useEffect(() => {
-    // A função de limpeza será chamada quando o componente for desmontado
-    return () => {
-      if (mapRef.current) {
-        mapRef.current.remove();
-        mapRef.current = null;
-      }
-    };
-  }, []);
-
-
-  const markers = data
+  const markers = useMemo(() => data
     .map(item => {
       if (!item.CameraID) return null;
       const coord = coordinateMap.get(item.CameraID);
@@ -58,7 +46,7 @@ export default function VehicleMap({ data }: VehicleMapProps) {
         position: [coord.lat, coord.lng] as [number, number],
       };
     })
-    .filter((item): item is PlateData & { position: [number, number] } => item !== null);
+    .filter((item): item is PlateData & { position: [number, number] } => item !== null), [data, coordinateMap]);
 
   return (
     <MapContainer 
@@ -66,7 +54,6 @@ export default function VehicleMap({ data }: VehicleMapProps) {
         zoom={11} 
         scrollWheelZoom={true} 
         style={{ height: '100%', width: '100%' }}
-        whenCreated={mapInstance => { mapRef.current = mapInstance; }}
     >
       <TileLayer
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
