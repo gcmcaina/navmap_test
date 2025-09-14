@@ -40,5 +40,3 @@ const MarkerClusterGroup = ({ children }: { children: React.ReactNode }) => {
 };
 
 export default MarkerClusterGroup;
-
-    
