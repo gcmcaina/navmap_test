@@ -12,16 +12,6 @@ import { cameraCoordinates, type CameraCoordinate } from '@/lib/camera-coordinat
 import Image from 'next/image';
 import { useEffect, useRef } from 'react';
 
-// Corrige o problema do ícone padrão do Leaflet não aparecer
-if (typeof window !== 'undefined') {
-  delete (L.Icon.Default.prototype as any)._getIconUrl;
-  L.Icon.Default.mergeOptions({
-    iconRetinaUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon-2x.png',
-    iconUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon.png',
-    shadowUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png',
-  });
-}
-
 interface VehicleMapProps {
   data: PlateData[];
 }
@@ -33,6 +23,18 @@ export default function VehicleMap({ data }: VehicleMapProps) {
   const coordinateMap = new Map<string, CameraCoordinate>(
     cameraCoordinates.map(c => [c.id, c])
   );
+  
+  useEffect(() => {
+    // Corrige o problema do ícone padrão do Leaflet não aparecer
+    if (typeof window !== 'undefined') {
+      delete (L.Icon.Default.prototype as any)._getIconUrl;
+      L.Icon.Default.mergeOptions({
+        iconRetinaUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon-2x.png',
+        iconUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon.png',
+        shadowUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png',
+      });
+    }
+  }, []);
 
   useEffect(() => {
     // A função de limpeza será chamada quando o componente for desmontado
