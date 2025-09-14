@@ -291,15 +291,13 @@ export default function PlateGalleryPage() {
     });
 
     try {
-      // Cria um novo documento PDF no formato A4 (padrão)
       const doc = new jsPDF('p', 'mm', 'a4');
-      const margin = 15; // Define a margem da página
+      const margin = 15;
       const pageWidth = doc.internal.pageSize.getWidth();
       const pageHeight = doc.internal.pageSize.getHeight();
-      
-      let itemsOnPage = 0; // Contador de itens na página atual
+      let currentPage = 1;
 
-      // Adiciona o cabeçalho do relatório na primeira página
+      // Adiciona o cabeçalho na primeira página
       doc.setFontSize(18);
       doc.text("Relatório de Veículos", margin, margin);
       
@@ -307,37 +305,31 @@ export default function PlateGalleryPage() {
       doc.setFontSize(10);
       doc.text(headerText, pageWidth - margin, margin, { align: 'right' });
 
-      // Função para adicionar um item (imagem e texto) ao PDF
+      // Adiciona um espaço extra após o cabeçalho, apenas na primeira página
+      const initialY = margin + 15;
+
       const addItem = async (item: PlateData, itemIndex: number) => {
-        if (itemsOnPage === 3) { // Se a página está cheia (3 itens)
-          doc.addPage(); // Adiciona uma nova página
-          itemsOnPage = 0; // Zera o contador
+        const itemsPerPage = 3;
+        const pageIndex = Math.floor(itemIndex / itemsPerPage);
+        
+        // Adiciona uma nova página se necessário
+        if (pageIndex + 1 > currentPage) {
+          doc.addPage();
+          currentPage++;
         }
-
+        
+        const itemOnPageIndex = itemIndex % itemsPerPage;
+        
         // Define as posições verticais para os 3 "slots" da página
-        const slotHeight = (pageHeight - (margin * 2)) / 3;
-        const y = margin + (itemsOnPage * slotHeight);
-
-        // Adiciona a placa, marca e modelo
-        doc.setFontSize(12).setFont("arial", 'bold');
-        doc.text(item["License Plate"] || 'N/A', margin, y + 5);
+        let y = margin + (itemOnPageIndex * ((pageHeight - (margin * 2)) / itemsPerPage));
         
-        doc.setFontSize(10).setFont("arial", 'normal');
-        if (item.Marca && item.Marca !== "Marca não Informada") {
-            doc.text(`Veículo: ${item.Marca} ${item.Model || ''}`, margin, y + 10);
-        }
-        
-        // Adiciona Data/Hora e Localização
-        if (item['Detected At']) {
-          doc.text(`Data/Hora: ${new Date(item['Detected At']).toLocaleString('pt-BR')}`, margin, y + 15);
-        }
-        if (item.CameraAddress) {
-          const locationLines = doc.splitTextToSize(`Localização: ${item.CameraAddress}`, 80); // Limita a largura do texto
-          doc.text(locationLines, margin, y + 20);
+        // Adiciona o espaço extra apenas para o primeiro item da primeira página
+        if (currentPage === 1 && itemOnPageIndex === 0) {
+            y = initialY;
         }
 
         try {
-          // Busca a imagem, converte para blob e depois para dataUrl
+          // Busca a imagem e a converte para dataUrl
           const response = await fetch(item['Image URL']);
           if (!response.ok) throw new Error('Falha ao buscar imagem.');
           const blob = await response.blob();
@@ -352,31 +344,62 @@ export default function PlateGalleryPage() {
           const img = new (window as any).Image();
           img.src = dataUrl;
           await new Promise(resolve => { img.onload = resolve; });
-          
-          const imgMaxWidth = 80; // Largura máxima da imagem
-          const imgRatio = img.width / img.height;
-          const imgWidth = Math.min(imgMaxWidth, slotHeight * imgRatio);
-          const imgHeight = imgWidth / imgRatio;
-          
-          // Posição da imagem (à direita)
-          const imageX = pageWidth - margin - imgWidth;
-          const imageY = y;
-          doc.addImage(dataUrl, 'JPEG', imageX, imageY, imgWidth, imgHeight, undefined, 'FAST');
-        } catch (e) {
-          // Se a imagem falhar, exibe um texto substituto
-          doc.text('Imagem indisponível', pageWidth - margin - 50, y + 25);
-          console.error(`Falha ao carregar imagem para o relatório: ${item['Image URL']}`, e);
-        }
 
-        itemsOnPage++; // Incrementa o contador de itens na página
+          const imgMaxWidth = 80;
+          const imgMaxHeight = 60;
+          let imgWidth = img.width;
+          let imgHeight = img.height;
+
+          if (imgWidth > imgMaxWidth) {
+            imgHeight = (imgMaxWidth / imgWidth) * imgHeight;
+            imgWidth = imgMaxWidth;
+          }
+          if (imgHeight > imgMaxHeight) {
+            imgWidth = (imgMaxHeight / imgHeight) * imgWidth;
+            imgHeight = imgMaxHeight;
+          }
+
+          // Posição da imagem (à esquerda)
+          const imageX = margin;
+          doc.addImage(dataUrl, 'JPEG', imageX, y, imgWidth, imgHeight);
+
+          // Posição do texto (à direita da imagem)
+          let textX = margin + imgWidth + 10;
+          let textY = y + 5;
+
+          // Adiciona a placa, marca e modelo
+          doc.setFontSize(12).setFont("arial", 'bold');
+          doc.text(item["License Plate"] || 'N/A', textX, textY);
+          textY += 6;
+          
+          doc.setFontSize(10).setFont("arial", 'normal');
+          if (item.Marca && item.Marca !== "Marca não Informada") {
+              doc.text(`Veículo: ${item.Marca} ${item.Model || ''}`, textX, textY);
+              textY += 5;
+          }
+          
+          // Adiciona Data/Hora e Localização
+          if (item['Detected At']) {
+            doc.text(`Data/Hora: ${new Date(item['Detected At']).toLocaleString('pt-BR')}`, textX, textY);
+            textY += 5;
+          }
+          if (item.CameraAddress) {
+            const locationLines = doc.splitTextToSize(`Localização: ${item.CameraAddress}`, pageWidth - textX - margin);
+            doc.text(locationLines, textX, textY);
+          }
+        } catch (e) {
+          console.error(`Falha ao carregar imagem para o relatório: ${item['Image URL']}`, e);
+          let textX = margin + 90;
+          doc.text('Imagem indisponível', margin, y + 25);
+          doc.setFontSize(12).setFont("arial", 'bold');
+          doc.text(item["License Plate"] || 'N/A', textX, y + 5);
+        }
       };
 
-      // Itera sobre todos os dados filtrados para adicionar cada item ao PDF
       for (let i = 0; i < filteredData.length; i++) {
         await addItem(filteredData[i], i);
       }
   
-      // Salva o arquivo PDF
       doc.save('relatorio_lpr.pdf');
   
       toast({
@@ -393,7 +416,6 @@ export default function PlateGalleryPage() {
     } finally {
       setIsGeneratingReport(false);
     }
-    // --- Fim da Seção de Geração de PDF ---
   };
 
 
@@ -738,7 +760,3 @@ export default function PlateGalleryPage() {
     </div>
   );
 }
-
-    
-
-    
