@@ -679,14 +679,14 @@ export default function PlateGalleryPage() {
       </div>
 
       <Dialog open={isMapOpen} onOpenChange={setIsMapOpen}>
-        <DialogContent className="max-w-7xl w-full h-[95vh] p-2">
+        <DialogContent className="max-w-7xl w-full h-[95vh] p-2 flex flex-col">
             <DialogHeader>
                 <DialogTitle>Mapa de Câmeras</DialogTitle>
                 <DialogDescription>
                     Visualização das câmeras no mapa. Use o zoom para agrupar ou desagrupar os marcadores.
                 </DialogDescription>
             </DialogHeader>
-            <div className="h-full w-full rounded-md overflow-hidden">
+            <div className="flex-grow rounded-md overflow-hidden">
               {isMapOpen && <VehicleMap key={mapKey} data={filteredData} />}
             </div>
         </DialogContent>

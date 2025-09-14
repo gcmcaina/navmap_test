@@ -61,7 +61,7 @@ export default function VehicleMap({ data }: { data: PlateData[] }) {
             const position: [number, number] = [coord.lat, coord.lng];
             const popupContent = `
                 <div class="w-64">
-                    <div class="relative w-full h-40 mb-2 overflow-hidden">
+                    <div class="relative w-full h-40 mb-2 overflow-hidden rounded-md">
                         <img src="${item['Image URL']}" alt="${item['License Plate'] || 'Imagem'}" style="width:100%; height:100%; object-fit:cover;" />
                     </div>
                     <p class="font-bold text-lg">${item['License Plate']}</p>
