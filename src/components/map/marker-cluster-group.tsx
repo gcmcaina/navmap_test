@@ -1,72 +1,70 @@
-"use client"
-
-import { useEffect } from "react";
+"use client";
+import React, { useEffect } from "react";
 import L from "leaflet";
-import "leaflet.markercluster/dist/leaflet.markercluster";
+import "leaflet.markercluster";
 import { useLeafletContext } from "@react-leaflet/core";
 
-const MarkerClusterGroup = ({ children } : { children: React.ReactNode}) => {
-  const context = useLeafletContext();
+// Este componente é um wrapper para a biblioteca leaflet.markercluster.
+// Ele foi simplificado para funcionar de forma mais direta com o react-leaflet.
+const MarkerClusterGroup = ({ children }: { children: React.ReactNode }) => {
+  const map = useLeafletContext().map;
   
   useEffect(() => {
-    const markerClusterGroup = L.markerClusterGroup();
-    const container = context.layerContainer || context.map;
-    container.addLayer(markerClusterGroup);
+    if (!map) return;
 
-    // Adiciona os filhos ao cluster
+    const markerClusterGroup = L.markerClusterGroup();
+    
+    // Adiciona os marcadores filhos ao grupo de cluster
     const markers: L.Marker[] = [];
     React.Children.forEach(children, (child) => {
-        if (React.isValidElement(child)) {
-            // Esta é uma simplificação. Em um cenário real, você precisaria extrair
-            // as props do Marker e criar um L.Marker com elas.
-            // Para este exemplo, vamos assumir que o 'children' já são L.Marker
-            // ou que uma lógica mais complexa seria necessária para converter componentes React em L.Marker
+      if (React.isValidElement(child) && (child.type as any).name === 'Marker') {
+        const { position, children: popupContent } = (child.props as any);
+        if (position) {
+          const marker = L.marker(new L.LatLng(position[0], position[1]));
+          
+          // Se houver um Popup como filho, vincula seu conteúdo ao marcador
+          if (popupContent) {
+            const popupElement = React.Children.toArray(popupContent).find(
+              (c: any) => c.type && c.type.name === 'Popup'
+            );
+            if (popupElement && React.isValidElement(popupElement)) {
+              // Para renderizar o conteúdo do Popup, precisamos de um truque,
+              // já que o Leaflet espera HTML e aqui temos React.
+              // Por simplicidade, vamos usar o conteúdo textual.
+              // Uma implementação mais complexa usaria ReactDOM.renderToString.
+              const content = popupElement.props.children || '';
+              // Para este caso, vamos deixar o react-leaflet gerenciar o popup
+            }
+          }
+           // É importante que o react-leaflet gerencie a adição ao mapa
+           // e nós apenas agrupemos. A abordagem mais simples é deixar o react-leaflet
+           // adicionar os marcadores e nós os pegarmos.
         }
+      }
     });
-
-    return () => {
-      container.removeLayer(markerClusterGroup);
-    };
-  // Apenas re-renderiza se o mapa mudar, mas idealmente você também observaria 'children'
-  }, [context.map]);
-
-
-  // O truque aqui é renderizar os children diretamente,
-  // pois o react-leaflet vai adicioná-los ao mapa.
-  // O useEffect acima irá então pegá-los e adicioná-los ao cluster.
-  // NOTA: Esta é uma abordagem simplificada. Uma implementação mais robusta
-  // pode precisar de uma lógica mais complexa para sincronizar os marcadores.
-  // Para a maioria dos casos de uso, uma biblioteca como `react-leaflet-markercluster` é a melhor rota.
-  // Como não podemos adicioná-la agora, esta é uma implementação manual.
-  
-  const map = useLeafletContext().map;
-  const clusterGroup = L.markerClusterGroup();
-  
-  useEffect(() => {
-      if (!map) return;
-      
-      const markers = React.Children.map(children, (child: any) => {
-        if (React.isValidElement(child)) {
-            const { position } = child.props;
-            const marker = L.marker(new L.LatLng(position[0], position[1]));
-
-            // Para popups, teríamos que renderizar o conteúdo do popup para uma string HTML
-            // e então usar marker.bindPopup(). Isso é complexo.
-            // Por simplicidade, vamos pular os popups na versão de cluster manual.
-            
-            return marker;
+    
+    // A biblioteca react-leaflet-markercluster lida com isso de forma mais elegante.
+    // Como estamos fazendo manualmente, a lógica é mais complexa.
+    // A implementação abaixo é uma forma mais estável de integrar com o react-leaflet
+    
+    const layerContainer = map; // Adicionar diretamente ao mapa
+    markerClusterGroup.addLayers(
+      (React.Children.map(children, (child: any) => {
+        if (child) {
+          const marker = L.marker(child.props.position);
+          // O popup é mais complexo, por agora vamos pular
+          return marker;
         }
         return null;
-      });
+      }) || []).filter(Boolean)
+    );
+    
+    layerContainer.addLayer(markerClusterGroup);
 
-      clusterGroup.addLayers(markers.filter(m => m));
-      map.addLayer(clusterGroup);
-
-      return () => {
-          map.removeLayer(clusterGroup);
-      };
+    return () => {
+      layerContainer.removeLayer(markerClusterGroup);
+    };
   }, [map, children]);
-
 
   return null;
 };

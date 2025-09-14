@@ -11,13 +11,14 @@ import { cameraCoordinates, type CameraCoordinate } from '@/lib/camera-coordinat
 import Image from 'next/image';
 
 // Corrige o problema do ícone padrão do Leaflet não aparecer
-delete (L.Icon.Default.prototype as any)._getIconUrl;
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon-2x.png',
-  iconUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon.png',
-  shadowUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png',
-});
-
+if (typeof window !== 'undefined') {
+  delete (L.Icon.Default.prototype as any)._getIconUrl;
+  L.Icon.Default.mergeOptions({
+    iconRetinaUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon-2x.png',
+    iconUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon.png',
+    shadowUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png',
+  });
+}
 
 const coordinateMap = new Map<string, CameraCoordinate>(
   cameraCoordinates.map(c => [c.id, c])
@@ -59,7 +60,7 @@ export default function VehicleMap({ data }: VehicleMapProps) {
             <Popup>
               <div className="w-64">
                 <div className="relative w-full h-40 mb-2">
-                    <Image src={item['Image URL']} alt={item['License Plate'] || 'Imagem'} layout="fill" objectFit="cover" unoptimized/>
+                    <Image src={item['Image URL']} alt={item['License Plate'] || 'Imagem'} fill objectFit="cover" unoptimized/>
                 </div>
                 <p className="font-bold text-lg">{item['License Plate']}</p>
                 <p>{item.CameraAddress}</p>
