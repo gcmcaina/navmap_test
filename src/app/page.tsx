@@ -66,7 +66,7 @@ export default function PlateGalleryPage() {
   const [startTime, setStartTime] = useState('');
   const [endTime, setEndTime] = useState('');
   const [isMapOpen, setIsMapOpen] = useState(false);
-  const [mapKey, setMapKey] = useState(1);
+  const [mapKey, setMapKey] = useState(Date.now());
 
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -635,7 +635,7 @@ export default function PlateGalleryPage() {
                 {isGeneratingReport ? 'Gerando...' : 'Gerar Relatório'}
               </Button>
               <Button onClick={() => {
-                setMapKey(prev => prev + 1);
+                setMapKey(Date.now());
                 setIsMapOpen(true);
                 }} 
                 disabled={filteredData.length === 0}
@@ -776,3 +776,4 @@ export default function PlateGalleryPage() {
     </div>
   );
 }
+
