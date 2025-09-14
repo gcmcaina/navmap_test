@@ -1,75 +1,91 @@
-
 "use client";
 
-import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
-import 'leaflet/dist/leaflet.css';
+import { useEffect, useRef } from 'react';
 import L from 'leaflet';
+import 'leaflet.markercluster';
+import 'leaflet/dist/leaflet.css';
+import 'leaflet.markercluster/dist/MarkerCluster.css';
+import 'leaflet.markercluster/dist/MarkerCluster.Default.css';
+
 import type { PlateData } from '@/types';
 import { cameraCoordinates, type CameraCoordinate } from '@/lib/camera-coordinates';
-import Image from 'next/image';
-import { useEffect, useMemo } from 'react';
-import MarkerClusterGroup from './marker-cluster-group';
+
+// Configuração do ícone que estava causando problemas antes.
+// Agora é seguro porque será chamado dentro do useEffect.
+const setupLeafletIcons = () => {
+    delete (L.Icon.Default.prototype as any)._getIconUrl;
+    L.Icon.Default.mergeOptions({
+        iconRetinaUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon-2x.png',
+        iconUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon.png',
+        shadowUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png',
+    });
+};
 
 
 export default function VehicleMap({ data }: { data: PlateData[] }) {
-  
-  // Configuração global do ícone do Leaflet para ser executada apenas uma vez no cliente.
-  useEffect(() => {
-      delete (L.Icon.Default.prototype as any)._getIconUrl;
-      L.Icon.Default.mergeOptions({
-          iconRetinaUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon-2x.png',
-          iconUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon.png',
-          shadowUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png',
-      });
-  }, []);
+    const mapContainerRef = useRef<HTMLDivElement>(null);
+    const mapInstanceRef = useRef<L.Map | null>(null);
 
-  const center: [number, number] = [-23.55052, -46.633303]; // São Paulo center
+    useEffect(() => {
+        // Garante que o código só será executado no cliente
+        if (typeof window === 'undefined' || !mapContainerRef.current) {
+            return;
+        }
 
-  const coordinateMap = useMemo(() => new Map<string, CameraCoordinate>(
-    cameraCoordinates.map(c => [c.id, c])
-  ), []);
+        // Evita reinicialização se o mapa já existir
+        if (mapInstanceRef.current) {
+            return;
+        }
 
-  const markers = useMemo(() => data
-    .map(item => {
-      if (!item.CameraID) return null;
-      const coord = coordinateMap.get(item.CameraID);
-      if (!coord) return null;
+        setupLeafletIcons();
 
-      return {
-        ...item,
-        position: [coord.lat, coord.lng] as [number, number],
-      };
-    })
-    .filter((item): item is PlateData & { position: [number, number] } => item !== null), [data, coordinateMap]);
+        const center: [number, number] = [-23.55052, -46.633303]; // São Paulo
+        const map = L.map(mapContainerRef.current).setView(center, 11);
+        mapInstanceRef.current = map;
 
-  return (
-    <MapContainer 
-        center={center} 
-        zoom={11} 
-        scrollWheelZoom={true} 
-        style={{ height: '100%', width: '100%' }}
-    >
-      <TileLayer
-        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-      />
-      <MarkerClusterGroup>
-        {markers.map((item) => (
-          <Marker key={item.id} position={item.position}>
-            <Popup>
-              <div className="w-64">
-                <div className="relative w-full h-40 mb-2">
-                    <Image src={item['Image URL']} alt={item['License Plate'] || 'Imagem'} fill style={{objectFit: 'cover'}} unoptimized/>
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        }).addTo(map);
+
+        const coordinateMap = new Map<string, CameraCoordinate>(
+            cameraCoordinates.map(c => [c.id, c])
+        );
+
+        const markers = L.markerClusterGroup();
+
+        data.forEach(item => {
+            if (!item.CameraID) return;
+            const coord = coordinateMap.get(item.CameraID);
+            if (!coord) return;
+
+            const position: [number, number] = [coord.lat, coord.lng];
+            const popupContent = `
+                <div class="w-64">
+                    <div class="relative w-full h-40 mb-2 overflow-hidden">
+                        <img src="${item['Image URL']}" alt="${item['License Plate'] || 'Imagem'}" style="width:100%; height:100%; object-fit:cover;" />
+                    </div>
+                    <p class="font-bold text-lg">${item['License Plate']}</p>
+                    <p>${item.CameraAddress || ''}</p>
+                    ${item['Detected At'] ? `<p class="text-sm text-gray-500">${new Date(item['Detected At']).toLocaleString()}</p>` : ''}
                 </div>
-                <p className="font-bold text-lg">{item['License Plate']}</p>
-                <p>{item.CameraAddress}</p>
-                {item['Detected At'] && <p className="text-sm text-muted-foreground">{new Date(item['Detected At']).toLocaleString()}</p>}
-              </div>
-            </Popup>
-          </Marker>
-        ))}
-      </MarkerClusterGroup>
-    </MapContainer>
-  );
-}
+            `;
+            
+            const marker = L.marker(position).bindPopup(popupContent);
+            markers.addLayer(marker);
+        });
 
+        map.addLayer(markers);
+
+        // Função de limpeza CRUCIAL para o Fast Refresh do Next.js
+        return () => {
+            if (mapInstanceRef.current) {
+                mapInstanceRef.current.remove();
+                mapInstanceRef.current = null;
+            }
+        };
+    }, [data]); // A dependência 'data' garante que o mapa se atualize se os dados mudarem
+
+    return (
+        <div ref={mapContainerRef} style={{ height: '100%', width: '100%' }} />
+    );
+}
