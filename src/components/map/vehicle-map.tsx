@@ -3,10 +3,7 @@
 
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
-import 'leaflet.markercluster/dist/MarkerCluster.css';
-import 'leaflet.markercluster/dist/MarkerCluster.Default.css';
 import L from 'leaflet';
-import MarkerClusterGroup from './marker-cluster-group';
 import type { PlateData } from '@/types';
 import { cameraCoordinates, type CameraCoordinate } from '@/lib/camera-coordinates';
 import Image from 'next/image';
@@ -16,21 +13,20 @@ interface VehicleMapProps {
   data: PlateData[];
 }
 
-export default function VehicleMap({ data }: VehicleMapProps) {
-  const center: [number, number] = [-23.55052, -46.633303]; // Centro de São Paulo
-
-  useEffect(() => {
-    // Corrige o problema do ícone padrão do Leaflet não aparecer
-    if (typeof window !== 'undefined') {
-      delete (L.Icon.Default.prototype as any)._getIconUrl;
-      L.Icon.Default.mergeOptions({
+// Fix for default icon issue in Next.js
+if (typeof window !== 'undefined') {
+    delete (L.Icon.Default.prototype as any)._getIconUrl;
+    L.Icon.Default.mergeOptions({
         iconRetinaUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon-2x.png',
         iconUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon.png',
         shadowUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png',
-      });
-    }
-  }, []);
-  
+    });
+}
+
+
+export default function VehicleMap({ data }: VehicleMapProps) {
+  const center: [number, number] = [-23.55052, -46.633303]; // Centro de São Paulo
+
   const coordinateMap = useMemo(() => new Map<string, CameraCoordinate>(
     cameraCoordinates.map(c => [c.id, c])
   ), []);
@@ -59,7 +55,6 @@ export default function VehicleMap({ data }: VehicleMapProps) {
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
       />
-      <MarkerClusterGroup>
         {markers.map((item) => (
           <Marker key={item.id} position={item.position}>
             <Popup>
@@ -74,7 +69,6 @@ export default function VehicleMap({ data }: VehicleMapProps) {
             </Popup>
           </Marker>
         ))}
-      </MarkerClusterGroup>
     </MapContainer>
   );
 }
