@@ -1,18 +1,19 @@
-
 import { useEffect } from 'react';
 import { useLeafletContext } from '@react-leaflet/core';
 import L from 'leaflet';
 import 'leaflet.markercluster';
 import 'leaflet.markercluster/dist/MarkerCluster.css';
 import 'leaflet.markercluster/dist/MarkerCluster.Default.css';
+import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 
-const MarkerClusterGroup = ({ children }: { children: React.ReactNode[] }) => {
+const MarkerClusterGroup = ({ children }: { children: React.ReactNode | React.ReactNode[] }) => {
   const context = useLeafletContext();
 
   useEffect(() => {
     const markerClusterGroup = L.markerClusterGroup();
 
+    const markers: L.Marker[] = [];
     React.Children.forEach(children, (child) => {
       if (React.isValidElement(child)) {
         const { position } = child.props;
@@ -26,10 +27,11 @@ const MarkerClusterGroup = ({ children }: { children: React.ReactNode[] }) => {
           marker.bindPopup(popupContent);
         }
         
-        markerClusterGroup.addLayer(marker);
+        markers.push(marker);
       }
     });
 
+    markerClusterGroup.addLayers(markers);
     context.map.addLayer(markerClusterGroup);
 
     return () => {

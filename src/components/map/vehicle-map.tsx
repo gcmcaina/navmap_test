@@ -11,16 +11,18 @@ import { useEffect, useMemo, useRef } from 'react';
 import MarkerClusterGroup from './marker-cluster-group';
 
 
+// Configuração global do ícone do Leaflet para ser executada apenas uma vez no cliente.
+useEffect(() => {
+    delete (L.Icon.Default.prototype as any)._getIconUrl;
+    L.Icon.Default.mergeOptions({
+        iconRetinaUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon-2x.png',
+        iconUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon.png',
+        shadowUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png',
+    });
+}, []);
+
+
 export default function VehicleMap({ data }: { data: PlateData[] }) {
-  // Correctly set up the default icon path for Leaflet inside the component
-  useEffect(() => {
-      delete (L.Icon.Default.prototype as any)._getIconUrl;
-      L.Icon.Default.mergeOptions({
-          iconRetinaUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon-2x.png',
-          iconUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon.png',
-          shadowUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png',
-      });
-  }, []);
   
   const center: [number, number] = [-23.55052, -46.633303]; // São Paulo center
 
