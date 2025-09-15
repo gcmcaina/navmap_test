@@ -41,6 +41,7 @@ import { cameraAddressMapping } from "@/lib/camera-data";
 import Link from "next/link";
 import jsPDF from 'jspdf';
 import dynamic from 'next/dynamic';
+import { logoBase64 } from "@/lib/logo-base64";
 
 
 const VehicleMap = dynamic(() => import('@/components/map/vehicle-map'), { ssr: false });
@@ -300,33 +301,40 @@ export default function PlateGalleryPage() {
       const margin = 15;
       const pageWidth = doc.internal.pageSize.getWidth();
       const pageHeight = doc.internal.pageSize.getHeight();
-      let currentPage = 1;
       let itemsOnPage = 0;
+      const maxItemsPerPage = 3;
 
-      // Adiciona o cabeçalho na primeira página
-      doc.setFontSize(18);
-      doc.text("Relatório de Veículos", margin, margin);
-      
-      const headerText = `Gerado em: ${new Date().toLocaleString('pt-BR')} | Total: ${filteredData.length}`;
-      doc.setFontSize(10);
-      doc.text(headerText, pageWidth - margin, margin, { align: 'right' });
+      const addBackground = () => {
+        const logoWidth = 150; 
+        const logoHeight = 150;
+        const x = (pageWidth - logoWidth) / 2;
+        const y = (pageHeight - logoHeight) / 2;
+        doc.addImage(logoBase64, 'PNG', x, y, logoWidth, logoHeight, undefined, 'FAST');
+      }
+
+      const addHeader = () => {
+        doc.setFontSize(18);
+        doc.text("Relatório de Veículos", margin, margin);
+        const headerText = `Gerado em: ${new Date().toLocaleString('pt-BR')} | Total: ${filteredData.length}`;
+        doc.setFontSize(10);
+        doc.text(headerText, pageWidth - margin, margin, { align: 'right' });
+      }
+
+      addBackground();
+      addHeader();
 
       for (let i = 0; i < filteredData.length; i++) {
         const item = filteredData[i];
         
-        if (itemsOnPage === 3) {
+        if (itemsOnPage === maxItemsPerPage) {
           doc.addPage();
-          currentPage++;
+          addBackground();
+          addHeader();
           itemsOnPage = 0;
         }
         
-        const slotHeight = (pageHeight - (margin * 2)) / 3;
-        let y = margin + (itemsOnPage * slotHeight);
-
-        // Adiciona um espaço extra apenas para o primeiro item da primeira página
-        if (currentPage === 1 && itemsOnPage === 0) {
-            y += 15;
-        }
+        const slotHeight = (pageHeight - (margin * 2) - 15) / maxItemsPerPage;
+        let y = margin + 15 + (itemsOnPage * slotHeight);
 
         try {
           const response = await fetch(item['Image URL']);
@@ -344,7 +352,7 @@ export default function PlateGalleryPage() {
           await new Promise(resolve => { img.onload = resolve; });
 
           const imgMaxWidth = 80;
-          const imgMaxHeight = slotHeight - 10; // Deixa uma pequena margem
+          const imgMaxHeight = slotHeight - 10;
           let imgWidth = img.width;
           let imgHeight = img.height;
           const aspectRatio = imgWidth / imgHeight;
@@ -762,7 +770,7 @@ export default function PlateGalleryPage() {
                    )}
                    {selectedItem.CameraAddress && selectedItem.CameraID && (
                      <p><span className="font-semibold">Local:</span>{' '}
-                       <Link href={`https://smartsampa.sentinelx.com.br/cameras/cameras/details/${selectedItem.CameraID}`} target="_blank" className="hover:underline">
+                       <Link href={`https://smartsampa.sentinelx_com_br/cameras/cameras/details/${selectedItem.CameraID}`} target="_blank" className="hover:underline">
                          {selectedItem.CameraAddress}
                        </Link>
                      </p>

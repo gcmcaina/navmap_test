@@ -46,6 +46,8 @@ export const cameraCoordinates: CameraCoordinate[] = [
   { id: '045bcab5-f44b-4c96-83ac-bd556c50ed9d', lat: -23.5186, lng: -46.6881 },
   { id: '046b3373-1a10-4ed6-b546-b253e2184daf', lat: -23.5518, lng: -46.5786 },
   { id: '0479b168-34f3-4a0d-b77d-9c0ec91b40b3', lat: -23.4619, lng: -46.6341 },
-  { id: '82e591af-0868-4267-be6f-d5a7e29d6167', lat: -23.4680, lng: -46.5824 }
-
+  { id: '82e591af-0868-4267-be6f-d5a7e29d6167', lat: -23.4680, lng: -46.5824 },
+  { id: 'd0404b85-43b7-4a77-a8ed-53cbba59b6df', lat: -23.60046100, lng: -46.68402200 },
+  { id: 'f90ba8ed-ec9b-4ab1-8b08-ab49c7e6d495', lat: -23.60046100, lng: -46.68402200},
+  { id: '863aae37-d676-44f0-abb9-46ab060bc3f1', lat: -23.60702380, lng: -46.69042040}
 ];
