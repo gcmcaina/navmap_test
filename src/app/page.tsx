@@ -305,11 +305,21 @@ export default function PlateGalleryPage() {
       const maxItemsPerPage = 3;
 
       const addBackground = () => {
-        const logoWidth = 150; 
-        const logoHeight = 150;
-        const x = (pageWidth - logoWidth) / 2;
-        const y = (pageHeight - logoHeight) / 2;
-        doc.addImage(logoBase64, 'PNG', x, y, logoWidth, logoHeight, undefined, 'FAST');
+        if(logoBase64 && logoBase64.startsWith('data:image')) {
+            const logoWidth = 150; 
+            const logoHeight = 150;
+            const x = (pageWidth - logoWidth) / 2;
+            const y = (pageHeight - logoHeight) / 2;
+
+            // Set the opacity for the image
+            doc.saveGraphicsState();
+            doc.setGState(new (doc as any).GState({opacity: 0.1}));
+            
+            doc.addImage(logoBase64, 'PNG', x, y, logoWidth, logoHeight, undefined, 'FAST');
+            
+            // Restore the normal opacity
+            doc.restoreGraphicsState();
+        }
       }
 
       const addHeader = () => {
@@ -770,7 +780,7 @@ export default function PlateGalleryPage() {
                    )}
                    {selectedItem.CameraAddress && selectedItem.CameraID && (
                      <p><span className="font-semibold">Local:</span>{' '}
-                       <Link href={`https://smartsampa.sentinelx_com_br/cameras/cameras/details/${selectedItem.CameraID}`} target="_blank" className="hover:underline">
+                       <Link href={`https://smartsampa.sentinelx.com.br/cameras/cameras/details/${selectedItem.CameraID}`} target="_blank" className="hover:underline">
                          {selectedItem.CameraAddress}
                        </Link>
                      </p>
