@@ -305,7 +305,8 @@ export default function PlateGalleryPage() {
       const maxItemsPerPage = 3;
 
       const addBackground = () => {
-        if(logoBase64 && logoBase64.startsWith('data:image')) {
+        // Only add image if it's not the placeholder
+        if (logoBase64 && !logoBase64.startsWith('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=')) {
             const logoWidth = 150; 
             const logoHeight = 150;
             const x = (pageWidth - logoWidth) / 2;
@@ -794,4 +795,3 @@ export default function PlateGalleryPage() {
     </div>
   );
 }
-
