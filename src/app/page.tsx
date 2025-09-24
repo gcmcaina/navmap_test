@@ -291,7 +291,7 @@ export default function PlateGalleryPage() {
   };
 
   const handleGenerateReport = async () => {
-    if (isGeneratingReport || availableData.length === 0) return;
+    if (isGeneratingReport || data.length === 0) return;
     setIsGeneratingReport(true);
     toast({
       title: 'Gerando Relatório',
@@ -303,51 +303,52 @@ export default function PlateGalleryPage() {
       const margin = 15;
       const pageWidth = doc.internal.pageSize.getWidth();
       const pageHeight = doc.internal.pageSize.getHeight();
-      let itemsOnPage = 0;
-      const maxItemsPerPage = 3;
+      let yPosition = margin + 15;
 
       const addBackground = () => {
-        // Only add image if it's not the placeholder
         if (logoBase64 && !logoBase64.startsWith('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=')) {
             const logoWidth = 150; 
             const logoHeight = 150;
             const x = (pageWidth - logoWidth) / 2;
             const y = (pageHeight - logoHeight) / 2;
 
-            // Set the opacity for the image
             doc.saveGraphicsState();
             doc.setGState(new (doc as any).GState({opacity: 0.1}));
             
             doc.addImage(logoBase64, 'PNG', x, y, logoWidth, logoHeight, undefined, 'FAST');
             
-            // Restore the normal opacity
             doc.restoreGraphicsState();
         }
       }
 
-      const addHeader = () => {
+      const addHeader = (pageNum: number) => {
         doc.setFontSize(18);
+        doc.setFont('arial', 'bold');
         doc.text("Relatório de Veículos", margin, margin);
-        const headerText = `Gerado em: ${new Date().toLocaleString('pt-BR')} | Total: ${availableData.length}`;
+        
         doc.setFontSize(10);
+        doc.setFont('arial', 'normal');
+        const headerText = `Gerado em: ${new Date().toLocaleString('pt-BR')} | Página ${pageNum}`;
         doc.text(headerText, pageWidth - margin, margin, { align: 'right' });
+        yPosition = margin + 20;
       }
-
+      
+      const checkNewPage = (neededHeight: number) => {
+        if (yPosition + neededHeight > pageHeight - margin) {
+          doc.addPage();
+          addBackground();
+          addHeader(doc.internal.pages.length);
+        }
+      };
+      
+      let pageNum = 1;
       addBackground();
-      addHeader();
+      addHeader(pageNum);
 
       for (let i = 0; i < availableData.length; i++) {
         const item = availableData[i];
-        
-        if (itemsOnPage === maxItemsPerPage) {
-          doc.addPage();
-          addBackground();
-          addHeader();
-          itemsOnPage = 0;
-        }
-        
-        const slotHeight = (pageHeight - (margin * 2) - 15) / maxItemsPerPage;
-        let y = margin + 15 + (itemsOnPage * slotHeight);
+        const itemHeight = 75; // Approximate height for each item
+        checkNewPage(itemHeight);
 
         try {
           const response = await fetch(item['Image URL']);
@@ -365,7 +366,7 @@ export default function PlateGalleryPage() {
           await new Promise(resolve => { img.onload = resolve; });
 
           const imgMaxWidth = 80;
-          const imgMaxHeight = slotHeight - 10;
+          const imgMaxHeight = 60;
           let imgWidth = img.width;
           let imgHeight = img.height;
           const aspectRatio = imgWidth / imgHeight;
@@ -379,11 +380,10 @@ export default function PlateGalleryPage() {
             imgWidth = imgHeight * aspectRatio;
           }
           
-          const imageX = margin;
-          doc.addImage(dataUrl, 'JPEG', imageX, y, imgWidth, imgHeight);
+          doc.addImage(dataUrl, 'JPEG', margin, yPosition, imgWidth, imgHeight);
 
           let textX = margin + imgWidth + 10;
-          let textY = y + 5;
+          let textY = yPosition + 5;
 
           doc.setFontSize(12).setFont("arial", 'bold');
           doc.text(item["License Plate"] || 'N/A', textX, textY);
@@ -402,15 +402,43 @@ export default function PlateGalleryPage() {
           if (item.CameraAddress) {
             const locationLines = doc.splitTextToSize(`Localização: ${item.CameraAddress}`, pageWidth - textX - margin);
             doc.text(locationLines, textX, textY);
+            textY += (locationLines.length * 5);
           }
+
+          doc.setTextColor(0, 0, 255);
+          doc.textWithLink('Ver Imagem', textX, textY, { url: item['Image URL'] });
+          doc.setTextColor(0, 0, 0);
+
+
         } catch (e) {
           console.error(`Falha ao carregar imagem para o relatório: ${item['Image URL']}`, e);
           let textX = margin + 90;
-          doc.text('Imagem indisponível', margin, y + 25);
+          doc.text('Imagem indisponível', margin, yPosition + 25);
           doc.setFontSize(12).setFont("arial", 'bold');
-          doc.text(item["License Plate"] || 'N/A', textX, y + 5);
+          doc.text(item["License Plate"] || 'N/A', textX, yPosition + 5);
         }
-        itemsOnPage++;
+        yPosition += itemHeight;
+        if(i < availableData.length -1) {
+          checkNewPage(2);
+          doc.setDrawColor(200, 200, 200);
+          doc.line(margin, yPosition - 5, pageWidth - margin, yPosition - 5);
+        }
+      }
+
+      if (unavailableData.length > 0) {
+        checkNewPage(20);
+        yPosition += 10;
+        doc.setFontSize(14).setFont('arial', 'bold');
+        doc.text(`Imagens Indisponíveis (${unavailableData.length})`, margin, yPosition);
+        yPosition += 8;
+
+        doc.setFontSize(9).setFont('arial', 'normal');
+        for (const item of unavailableData) {
+            checkNewPage(5);
+            const text = `${item['License Plate']}: ${item['Image URL']}`;
+            doc.text(text, margin, yPosition);
+            yPosition += 5;
+        }
       }
   
       doc.save('relatorio_lpr.pdf');
@@ -660,7 +688,7 @@ export default function PlateGalleryPage() {
                 {isDownloading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileArchive className="mr-2 h-4 w-4" />}
                 {isDownloading ? 'Baixando...' : `Baixar ${availableData.length} Imagens`}
               </Button>
-              <Button onClick={handleGenerateReport} disabled={isGeneratingReport || availableData.length === 0}>
+              <Button onClick={handleGenerateReport} disabled={isGeneratingReport || data.length === 0}>
                 {isGeneratingReport ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileText className="mr-2 h-4 w-4" />}
                 {isGeneratingReport ? 'Gerando...' : 'Gerar Relatório'}
               </Button>
@@ -817,5 +845,7 @@ export default function PlateGalleryPage() {
     </div>
   );
 }
+
+    
 
     
