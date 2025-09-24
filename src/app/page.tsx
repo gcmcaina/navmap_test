@@ -338,7 +338,9 @@ export default function PlateGalleryPage() {
           doc.addPage();
           addBackground();
           addHeader(doc.internal.pages.length);
+          return true;
         }
+        return false;
       };
       
       let pageNum = 1;
@@ -429,16 +431,43 @@ export default function PlateGalleryPage() {
         checkNewPage(20);
         yPosition += 10;
         doc.setFontSize(14).setFont('arial', 'bold');
-        doc.text(`Imagens Indisponíveis (${unavailableData.length})`, margin, yPosition);
+        doc.text(`Registros com Imagens Indisponíveis (${unavailableData.length})`, margin, yPosition);
         yPosition += 8;
 
-        doc.setFontSize(9).setFont('arial', 'normal');
-        for (const item of unavailableData) {
-            checkNewPage(5);
-            const text = `${item['License Plate']}: ${item['Image URL']}`;
-            doc.text(text, margin, yPosition);
+        const unavailableGroupedByPlate = unavailableData.reduce((acc, item) => {
+            const plate = item["License Plate"] || "N/A";
+            if (!acc[plate]) {
+                acc[plate] = [];
+            }
+            acc[plate].push(item);
+            return acc;
+        }, {} as Record<string, PlateData[]>);
+
+        Object.keys(unavailableGroupedByPlate).forEach(plate => {
+            if(checkNewPage(10)) yPosition += 5; // Add space after page break
+            
+            doc.setFontSize(11).setFont('arial', 'bold');
+            doc.text(plate, margin, yPosition);
             yPosition += 5;
-        }
+
+            const items = unavailableGroupedByPlate[plate].sort((a, b) => 
+                new Date(a["Detected At"] || 0).getTime() - new Date(b["Detected At"] || 0).getTime()
+            );
+
+            items.forEach(item => {
+                checkNewPage(5);
+                doc.setFontSize(9).setFont('arial', 'normal');
+                
+                const date = item["Detected At"] ? new Date(item["Detected At"]).toLocaleString('pt-BR') : 'Data desconhecida';
+                const address = item.CameraAddress || 'Endereço desconhecido';
+                const text = `${date} - ${address}`;
+
+                const textLines = doc.splitTextToSize(text, pageWidth - margin * 2);
+                doc.text(textLines, margin + 5, yPosition);
+                yPosition += (textLines.length * 4);
+            });
+            yPosition += 3; // Space between plates
+        });
       }
   
       doc.save('relatorio_lpr.pdf');
@@ -845,7 +874,5 @@ export default function PlateGalleryPage() {
     </div>
   );
 }
-
-    
 
     
