@@ -28,6 +28,8 @@ import {
   ChevronDown,
   Map,
   FileText,
+  ImageIcon,
+  ImageOff,
 } from "lucide-react";
 import {
   Collapsible,
@@ -157,7 +159,7 @@ export default function PlateGalleryPage() {
         setIsHeaderOpen(false);
         toast({
           title: "Sucesso",
-          description: `${formattedData.length} imagens carregadas com sucesso.`,
+          description: `${formattedData.length} itens carregados com sucesso.`,
         });
 
       } catch (error: any) {
@@ -253,7 +255,7 @@ export default function PlateGalleryPage() {
     });
 
     const zip = new JSZip();
-    const imagePromises = filteredData.map(async (item) => {
+    const imagePromises = availableData.map(async (item) => {
       try {
         const response = await fetch(item["Image URL"]);
         if (!response.ok) throw new Error(`Falha ao buscar imagem: ${item["Image URL"]}`);
@@ -289,7 +291,7 @@ export default function PlateGalleryPage() {
   };
 
   const handleGenerateReport = async () => {
-    if (isGeneratingReport || filteredData.length === 0) return;
+    if (isGeneratingReport || availableData.length === 0) return;
     setIsGeneratingReport(true);
     toast({
       title: 'Gerando Relatório',
@@ -326,7 +328,7 @@ export default function PlateGalleryPage() {
       const addHeader = () => {
         doc.setFontSize(18);
         doc.text("Relatório de Veículos", margin, margin);
-        const headerText = `Gerado em: ${new Date().toLocaleString('pt-BR')} | Total: ${filteredData.length}`;
+        const headerText = `Gerado em: ${new Date().toLocaleString('pt-BR')} | Total: ${availableData.length}`;
         doc.setFontSize(10);
         doc.text(headerText, pageWidth - margin, margin, { align: 'right' });
       }
@@ -334,8 +336,8 @@ export default function PlateGalleryPage() {
       addBackground();
       addHeader();
 
-      for (let i = 0; i < filteredData.length; i++) {
-        const item = filteredData[i];
+      for (let i = 0; i < availableData.length; i++) {
+        const item = availableData[i];
         
         if (itemsOnPage === maxItemsPerPage) {
           doc.addPage();
@@ -432,8 +434,6 @@ export default function PlateGalleryPage() {
 
   const filteredData = useMemo(() => {
     return data.filter(item => {
-      if (imageErrors[item.id]) return false;
-      
       const typeFilterMatch = filter === 'all' || item.BodyType === filter;
       
       const normalizedSearch = searchQuery.toLowerCase();
@@ -478,22 +478,26 @@ export default function PlateGalleryPage() {
 
       return typeFilterMatch && searchFilterMatch && timeFilterMatch;
     });
-  }, [data, filter, searchQuery, imageErrors, startTime, endTime]);
+  }, [data, filter, searchQuery, startTime, endTime]);
+
+  const availableData = useMemo(() => filteredData.filter(item => !imageErrors[item.id]), [filteredData, imageErrors]);
+  const unavailableData = useMemo(() => filteredData.filter(item => imageErrors[item.id]), [filteredData, imageErrors]);
+
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (!selectedItem) return;
 
-      const currentIndex = filteredData.findIndex(item => item.id === selectedItem.id);
+      const currentIndex = availableData.findIndex(item => item.id === selectedItem.id);
       if (currentIndex === -1) return;
 
       let nextIndex;
       if (e.key === "ArrowRight") {
-        nextIndex = (currentIndex + 1) % filteredData.length;
-        setSelectedItem(filteredData[nextIndex]);
+        nextIndex = (currentIndex + 1) % availableData.length;
+        setSelectedItem(availableData[nextIndex]);
       } else if (e.key === "ArrowLeft") {
-        nextIndex = (currentIndex - 1 + filteredData.length) % filteredData.length;
-        setSelectedItem(filteredData[nextIndex]);
+        nextIndex = (currentIndex - 1 + availableData.length) % availableData.length;
+        setSelectedItem(availableData[nextIndex]);
       }
     };
 
@@ -501,26 +505,33 @@ export default function PlateGalleryPage() {
     return () => {
       window.removeEventListener("keydown", handleKeyDown);
     };
-  }, [selectedItem, filteredData]);
+  }, [selectedItem, availableData]);
   
-  const renderGrid = () => (
+  const renderGrid = (items: PlateData[], isUnavailable = false) => (
     <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4">
-      {filteredData.map((item) => (
+      {items.map((item) => (
           <Card
             key={item.id}
-            className="overflow-hidden group transition-all duration-300 hover:shadow-xl cursor-pointer"
-            onClick={() => handleImageClick(item)}
+            className={`overflow-hidden group transition-all duration-300 ${!isUnavailable ? 'hover:shadow-xl cursor-pointer' : 'bg-muted/50'}`}
+            onClick={() => !isUnavailable && handleImageClick(item)}
           >
             <div className="relative w-full aspect-square bg-muted">
-              <Image
-                src={item["Image URL"]}
-                alt={item["License Plate"] || 'Imagem do Veículo'}
-                fill
-                objectFit="cover"
-                className="group-hover:opacity-90 transition-opacity"
-                unoptimized
-                onError={() => handleImageError(item.id)}
-              />
+              {isUnavailable ? (
+                <div className="flex flex-col items-center justify-center h-full text-center p-4">
+                  <ImageOff className="w-12 h-12 text-muted-foreground mb-2" />
+                  <p className="text-sm font-semibold text-muted-foreground">Imagem Indisponível</p>
+                </div>
+              ) : (
+                <Image
+                  src={item["Image URL"]}
+                  alt={item["License Plate"] || 'Imagem do Veículo'}
+                  fill
+                  style={{ objectFit: "cover" }}
+                  className="group-hover:opacity-90 transition-opacity"
+                  unoptimized
+                  onError={() => handleImageError(item.id)}
+                />
+              )}
             </div>
             <div className="p-3 bg-card text-center">
               <p className="font-bold text-lg truncate">{item["License Plate"]}</p>
@@ -645,11 +656,11 @@ export default function PlateGalleryPage() {
                 />
               </div>
             </div>
-             <Button onClick={handleDownloadAll} disabled={isDownloading || filteredData.length === 0}>
+             <Button onClick={handleDownloadAll} disabled={isDownloading || availableData.length === 0}>
                 {isDownloading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileArchive className="mr-2 h-4 w-4" />}
-                {isDownloading ? 'Baixando...' : `Baixar ${filteredData.length} Imagens`}
+                {isDownloading ? 'Baixando...' : `Baixar ${availableData.length} Imagens`}
               </Button>
-              <Button onClick={handleGenerateReport} disabled={isGeneratingReport || filteredData.length === 0}>
+              <Button onClick={handleGenerateReport} disabled={isGeneratingReport || availableData.length === 0}>
                 {isGeneratingReport ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileText className="mr-2 h-4 w-4" />}
                 {isGeneratingReport ? 'Gerando...' : 'Gerar Relatório'}
               </Button>
@@ -657,7 +668,7 @@ export default function PlateGalleryPage() {
                 setMapKey(Date.now());
                 setIsMapOpen(true);
                 }} 
-                disabled={filteredData.length === 0}
+                disabled={availableData.length === 0}
                 >
                 <Map className="mr-2 h-4 w-4" />
                 Ver no Mapa
@@ -679,21 +690,32 @@ export default function PlateGalleryPage() {
                 <p className="text-muted-foreground mt-2">Faça o upload de um arquivo para começar.</p>
              </Card>
           )}
-          {!isLoading && filteredData.length > 0 && renderGrid()}
-          {!isLoading && data.length > 0 && filteredData.length === 0 && (
+          {!isLoading && availableData.length > 0 && renderGrid(availableData)}
+          {!isLoading && data.length > 0 && availableData.length === 0 && unavailableData.length === 0 && (
              <Card className="mt-6 text-center h-64 flex flex-col justify-center items-center border-dashed bg-muted/20">
-                <FileSpreadsheet className="h-16 w-16 text-muted-foreground mb-4" />
-                <h3 className="text-xl font-semibold">Nenhuma imagem para este filtro</h3>
-                <p className="text-muted-foreground mt-2">Selecione outro filtro ou carregue um novo arquivo.</p>
+                <Search className="h-16 w-16 text-muted-foreground mb-4" />
+                <h3 className="text-xl font-semibold">Nenhum item encontrado</h3>
+                <p className="text-muted-foreground mt-2">Ajuste seus filtros ou carregue um novo arquivo.</p>
              </Card>
           )}
-          {!isLoading && data.length > 0 && data.every(item => imageErrors[item.id]) && (
-             <Card className="mt-6 text-center h-64 flex flex-col justify-center items-center border-dashed bg-muted/20">
-                <FileSpreadsheet className="h-16 w-16 text-muted-foreground mb-4" />
-                <h3 className="text-xl font-semibold">Nenhuma imagem válida encontrada</h3>
-                <p className="text-muted-foreground mt-2">Verifique as URLs das imagens em seu arquivo.</p>
-             </Card>
+          
+          {unavailableData.length > 0 && (
+            <Collapsible className="mt-12">
+              <CollapsibleTrigger asChild>
+                <div className="flex items-center gap-2 cursor-pointer w-full border-b pb-2 mb-4 justify-center">
+                  <ImageOff className="text-muted-foreground"/>
+                  <h2 className="text-lg font-semibold text-muted-foreground">
+                    Itens com Imagens Indisponíveis ({unavailableData.length})
+                  </h2>
+                  <ChevronDown className="transition-transform duration-300 [&[data-state=open]]:-rotate-180" />
+                </div>
+              </CollapsibleTrigger>
+              <CollapsibleContent>
+                {renderGrid(unavailableData, true)}
+              </CollapsibleContent>
+            </Collapsible>
           )}
+
         </main>
       </div>
 
@@ -706,7 +728,7 @@ export default function PlateGalleryPage() {
                 </DialogDescription>
             </DialogHeader>
             <div className="flex-grow rounded-md overflow-hidden">
-              {isMapOpen && <VehicleMap key={mapKey} data={filteredData} />}
+              {isMapOpen && <VehicleMap key={mapKey} data={availableData} />}
             </div>
         </DialogContent>
       </Dialog>
@@ -795,3 +817,5 @@ export default function PlateGalleryPage() {
     </div>
   );
 }
+
+    
