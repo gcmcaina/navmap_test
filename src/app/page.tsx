@@ -44,7 +44,7 @@ import Link from "next/link";
 import jsPDF from 'jspdf';
 import dynamic from 'next/dynamic';
 import { logoBase64 } from "@/lib/logo-base64";
-
+import { pdfLayoutConfig } from "@/lib/pdf-layout";
 
 const VehicleMap = dynamic(() => import('@/components/map/vehicle-map'), { ssr: false });
 
@@ -70,6 +70,7 @@ export default function PlateGalleryPage() {
   const [endTime, setEndTime] = useState('');
   const [isMapOpen, setIsMapOpen] = useState(false);
   const [mapKey, setMapKey] = useState(Date.now());
+  const [reportFilename, setReportFilename] = useState("relatorio_lpr");
 
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -299,21 +300,36 @@ export default function PlateGalleryPage() {
     });
 
     try {
-      const doc = new jsPDF('p', 'mm', 'a4');
-      const margin = 15;
-      const pageWidth = doc.internal.pageSize.getWidth();
-      const pageHeight = doc.internal.pageSize.getHeight();
+      const doc = new jsPDF({
+        orientation: pdfLayoutConfig.orientation,
+        unit: pdfLayoutConfig.unit,
+        format: pdfLayoutConfig.format,
+      });
+      
+      const {
+        margin,
+        pageWidth,
+        pageHeight,
+        font,
+        titleSize,
+        headerSize,
+        bodySize,
+        smallSize,
+        lineHeight,
+        image,
+      } = pdfLayoutConfig;
       let yPosition = margin + 15;
+
 
       const addBackground = () => {
         if (logoBase64 && !logoBase64.startsWith('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=')) {
-            const logoWidth = 150; 
-            const logoHeight = 150;
+            const logoWidth = image.width;
+            const logoHeight = image.height;
             const x = (pageWidth - logoWidth) / 2;
             const y = (pageHeight - logoHeight) / 2;
 
             doc.saveGraphicsState();
-            doc.setGState(new (doc as any).GState({opacity: 0.1}));
+            doc.setGState(new (doc as any).GState({opacity: image.opacity}));
             
             doc.addImage(logoBase64, 'PNG', x, y, logoWidth, logoHeight, undefined, 'FAST');
             
@@ -322,12 +338,12 @@ export default function PlateGalleryPage() {
       }
 
       const addHeader = (pageNum: number) => {
-        doc.setFontSize(18);
-        doc.setFont('arial', 'bold');
+        doc.setFontSize(titleSize);
+        doc.setFont(font.name, 'bold');
         doc.text("Relatório de Veículos", margin, margin);
         
-        doc.setFontSize(10);
-        doc.setFont('arial', 'normal');
+        doc.setFontSize(headerSize);
+        doc.setFont(font.name, 'normal');
         const headerText = `Gerado em: ${new Date().toLocaleString('pt-BR')} | Página ${pageNum}`;
         doc.text(headerText, pageWidth - margin, margin, { align: 'right' });
         yPosition = margin + 20;
@@ -387,27 +403,27 @@ export default function PlateGalleryPage() {
           let textX = margin + imgWidth + 10;
           let textY = yPosition + 5;
 
-          doc.setFontSize(12).setFont("arial", 'bold');
+          doc.setFontSize(bodySize).setFont(font.name, 'bold');
           doc.text(item["License Plate"] || 'N/A', textX, textY);
-          textY += 6;
+          textY += lineHeight.large;
           
-          doc.setFontSize(10).setFont("arial", 'normal');
+          doc.setFontSize(smallSize).setFont(font.name, 'normal');
           if (item.Marca && item.Marca !== "Marca não Informada") {
               doc.text(`Veículo: ${item.Marca} ${item.Model || ''}`, textX, textY);
-              textY += 5;
+              textY += lineHeight.small;
           }
           
           if (item['Detected At']) {
             doc.text(`Data/Hora: ${new Date(item['Detected At']).toLocaleString('pt-BR')}`, textX, textY);
-            textY += 5;
+            textY += lineHeight.small;
           }
           if (item.CameraAddress) {
             const locationLines = doc.splitTextToSize(`Localização: ${item.CameraAddress}`, pageWidth - textX - margin);
             doc.text(locationLines, textX, textY);
-            textY += (locationLines.length * 5);
+            textY += (locationLines.length * lineHeight.small);
           }
-
-          doc.setTextColor(0, 0, 255);
+          
+          doc.setTextColor(pdfLayoutConfig.linkColor.r, pdfLayoutConfig.linkColor.g, pdfLayoutConfig.linkColor.b);
           doc.textWithLink('Ver Imagem', textX, textY, { url: item['Image URL'] });
           doc.setTextColor(0, 0, 0);
 
@@ -416,7 +432,7 @@ export default function PlateGalleryPage() {
           console.error(`Falha ao carregar imagem para o relatório: ${item['Image URL']}`, e);
           let textX = margin + 90;
           doc.text('Imagem indisponível', margin, yPosition + 25);
-          doc.setFontSize(12).setFont("arial", 'bold');
+          doc.setFontSize(bodySize).setFont(font.name, 'bold');
           doc.text(item["License Plate"] || 'N/A', textX, yPosition + 5);
         }
         yPosition += itemHeight;
@@ -430,9 +446,9 @@ export default function PlateGalleryPage() {
       if (unavailableData.length > 0) {
         checkNewPage(20);
         yPosition += 10;
-        doc.setFontSize(14).setFont('arial', 'bold');
+        doc.setFontSize(bodySize).setFont(font.name, 'bold');
         doc.text(`Registros com Imagens Indisponíveis (${unavailableData.length})`, margin, yPosition);
-        yPosition += 8;
+        yPosition += lineHeight.large;
 
         const unavailableGroupedByPlate = unavailableData.reduce((acc, item) => {
             const plate = item["License Plate"] || "N/A";
@@ -446,9 +462,9 @@ export default function PlateGalleryPage() {
         Object.keys(unavailableGroupedByPlate).forEach(plate => {
             if(checkNewPage(10)) yPosition += 5; // Add space after page break
             
-            doc.setFontSize(11).setFont('arial', 'bold');
+            doc.setFontSize(smallSize).setFont(font.name, 'bold');
             doc.text(plate, margin, yPosition);
-            yPosition += 5;
+            yPosition += lineHeight.medium;
 
             const items = unavailableGroupedByPlate[plate].sort((a, b) => 
                 new Date(a["Detected At"] || 0).getTime() - new Date(b["Detected At"] || 0).getTime()
@@ -456,7 +472,7 @@ export default function PlateGalleryPage() {
 
             items.forEach(item => {
                 checkNewPage(5);
-                doc.setFontSize(9).setFont('arial', 'normal');
+                doc.setFontSize(smallSize - 1).setFont(font.name, 'normal');
                 
                 const date = item["Detected At"] ? new Date(item["Detected At"]).toLocaleString('pt-BR') : 'Data desconhecida';
                 const address = item.CameraAddress || 'Endereço desconhecido';
@@ -464,13 +480,14 @@ export default function PlateGalleryPage() {
 
                 const textLines = doc.splitTextToSize(text, pageWidth - margin * 2);
                 doc.text(textLines, margin + 5, yPosition);
-                yPosition += (textLines.length * 4);
+                yPosition += (textLines.length * lineHeight.small);
             });
             yPosition += 3; // Space between plates
         });
       }
   
-      doc.save('relatorio_lpr.pdf');
+      const finalFilename = reportFilename.trim() ? `${reportFilename.trim()}.pdf` : 'relatorio_lpr.pdf';
+      doc.save(finalFilename);
   
       toast({
         title: 'Relatório Gerado',
@@ -717,6 +734,17 @@ export default function PlateGalleryPage() {
                 {isDownloading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileArchive className="mr-2 h-4 w-4" />}
                 {isDownloading ? 'Baixando...' : `Baixar ${availableData.length} Imagens`}
               </Button>
+              <div className="grid gap-1">
+                <Label htmlFor="report-filename" className="text-xs">Nome do Relatório</Label>
+                <Input
+                  id="report-filename"
+                  type="text"
+                  value={reportFilename}
+                  onChange={(e) => setReportFilename(e.target.value)}
+                  className="w-40"
+                  placeholder="relatorio_lpr"
+                />
+              </div>
               <Button onClick={handleGenerateReport} disabled={isGeneratingReport || data.length === 0}>
                 {isGeneratingReport ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileText className="mr-2 h-4 w-4" />}
                 {isGeneratingReport ? 'Gerando...' : 'Gerar Relatório'}
@@ -874,5 +902,7 @@ export default function PlateGalleryPage() {
     </div>
   );
 }
+
+    
 
     
