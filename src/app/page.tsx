@@ -322,6 +322,7 @@ export default function PlateGalleryPage() {
 
 
       const addBackground = () => {
+        // Only add image if it's not the placeholder
         if (logoBase64 && !logoBase64.startsWith('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=')) {
             const logoWidth = image.width;
             const logoHeight = image.height;
@@ -906,3 +907,4 @@ export default function PlateGalleryPage() {
     
 
     
+
