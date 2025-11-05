@@ -12,21 +12,18 @@ import 'leaflet-draw/dist/leaflet.draw.css';
 
 import type { PlateData } from '@/types';
 import { useToast } from "@/hooks/use-toast";
-import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png';
-import markerIcon from 'leaflet/dist/images/marker-icon.png';
 import markerShadow from 'leaflet/dist/images/marker-shadow.png';
 
 
 const setupLeafletIcons = () => {
     // This is a common fix for Leaflet with bundlers like Webpack/Next.js
     // It explicitly sets the paths for the default marker icons.
-    L.Icon.Default.prototype.options.iconUrl = markerIcon.src;
-    L.Icon.Default.prototype.options.iconRetinaUrl = markerIcon2x.src;
-    L.Icon.Default.prototype.options.shadowUrl = markerShadow.src;
-    L.Icon.Default.prototype.options.iconSize = [25, 41];
-    L.Icon.Default.prototype.options.iconAnchor = [12, 41];
-    L.Icon.Default.prototype.options.popupAnchor = [1, -34];
-    L.Icon.Default.prototype.options.shadowSize = [41, 41];
+    delete (L.Icon.Default.prototype as any)._getIconUrl;
+    L.Icon.Default.mergeOptions({
+        iconRetinaUrl: 'https://gcmcaina.github.io/navmap/assets/marker-icon2x.png',
+        iconUrl: 'https://gcmcaina.github.io/navmap/assets/marker-icon.png',
+        shadowUrl: markerShadow.src,
+    });
 };
 
 type VehicleMapProps = {
