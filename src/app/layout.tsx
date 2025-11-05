@@ -29,6 +29,10 @@ export default function RootLayout({
           rel="stylesheet"
           href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.Default.css"
         />
+        <link 
+          rel="stylesheet" 
+          href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css" 
+        />
       </head>
       <body className="font-body antialiased bg-background">
         {children}

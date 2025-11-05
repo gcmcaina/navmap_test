@@ -12,6 +12,6 @@ export type PlateData = {
   CameraID?: string;
   CameraAddress?: string;
   preloadedImageUrl?: string;
+  lat?: number;
+  lng?: number;
 };
-
-    

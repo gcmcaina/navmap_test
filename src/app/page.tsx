@@ -30,6 +30,7 @@ import {
   FileText,
   ImageIcon,
   ImageOff,
+  FilterX,
 } from "lucide-react";
 import {
   Collapsible,
@@ -70,6 +71,7 @@ export default function PlateGalleryPage() {
   const [isMapOpen, setIsMapOpen] = useState(false);
   const [mapKey, setMapKey] = useState(Date.now());
   const [reportFilename, setReportFilename] = useState("relatorio_lpr");
+  const [polygonFilteredData, setPolygonFilteredData] = useState<PlateData[] | null>(null);
 
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -78,6 +80,7 @@ export default function PlateGalleryPage() {
 
     setIsLoading(true);
     setImageErrors({});
+    setPolygonFilteredData(null);
     const reader = new FileReader();
     reader.onload = (e) => {
       try {
@@ -112,6 +115,8 @@ export default function PlateGalleryPage() {
         const trustLevelIndex = findHeaderIndex(["confiança", "trust level", "f"]);
         const cameraIDIndex = findHeaderIndex(["id da câmera", "camera id", "c"]);
         const cameraAddressIndex = findHeaderIndex(["endereço da câmera", "camera address"]);
+        const latIndex = findHeaderIndex(["lat", "latitude"]);
+        const lngIndex = findHeaderIndex(["lng", "longitude"]);
 
 
         if (imageUrlIndex === -1) {
@@ -151,6 +156,8 @@ export default function PlateGalleryPage() {
             "Model": model,
             "CameraID": cameraID,
             "CameraAddress": cameraAddress,
+            "lat": latIndex > -1 ? parseFloat(row[latIndex]) : undefined,
+            "lng": lngIndex > -1 ? parseFloat(row[lngIndex]) : undefined,
           }
         }).filter(item => item["Image URL"]);
         
@@ -366,7 +373,8 @@ export default function PlateGalleryPage() {
         doc.text(item["License Plate"] || 'N/A', x, textY);
         textY += lineHeight.large;
         
-        doc.setFontSize(smallSize).setFont(font.name, 'normal');
+        doc.setFont(font.name, 'normal')
+        doc.setFontSize(smallSize);
         if (item.Marca && item.Marca !== "Marca não Informada") {
             doc.text(`Veículo: ${item.Marca} ${item.Model || ''}`, x, textY);
             textY += lineHeight.small;
@@ -389,21 +397,13 @@ export default function PlateGalleryPage() {
       addBackground();
       addHeader(pageNum);
 
-      const allItemsToReport = [...availableData, ...unavailableData];
-
-      for (let i = 0; i < allItemsToReport.length; i++) {
-        const item = allItemsToReport[i];
-        const isUnavailable = imageErrors[item.id];
+      for (let i = 0; i < availableData.length; i++) {
+        const item = availableData[i];
         const itemHeight = 75; // Approximate height for each item
         checkNewPage(itemHeight);
 
-        const textX = margin + (isUnavailable ? 0 : 90);
+        const textX = margin + 90;
 
-        if (isUnavailable) {
-          doc.setFontSize(smallSize).setFont(font.name, 'italic');
-          doc.text('Imagem indisponível', margin, yPosition + 5);
-          addTextInfo(item, textX, yPosition + 15);
-        } else {
           try {
             const response = await fetch(item['Image URL']);
             if (!response.ok) throw new Error('Falha ao buscar imagem.');
@@ -435,24 +435,63 @@ export default function PlateGalleryPage() {
             }
             
             doc.addImage(dataUrl, 'JPEG', margin, yPosition, imgWidth, imgHeight);
-
-            let textY = addTextInfo(item, textX, yPosition + 5);
             
+          } catch (e) {
+            console.error(`Falha ao carregar imagem para o relatório: ${item['Image URL']}`, e);
+            doc.setFontSize(smallSize).setFont(font.name, 'italic');
+            doc.text('Imagem indisponível', margin, yPosition + 30);
+          } finally {
+            let textY = addTextInfo(item, textX, yPosition + 5);
             doc.setTextColor(pdfLayoutConfig.linkColor.r, pdfLayoutConfig.linkColor.g, pdfLayoutConfig.linkColor.b);
             doc.textWithLink('Ver Imagem', textX, textY, { url: item['Image URL'] });
             doc.setTextColor(0, 0, 0);
-
-          } catch (e) {
-            console.error(`Falha ao carregar imagem para o relatório: ${item['Image URL']}`, e);
-            doc.text('Imagem indisponível', margin, yPosition + 25);
-            addTextInfo(item, textX, yPosition + 5);
           }
-        }
+       
         yPosition += itemHeight;
-        if(i < allItemsToReport.length -1) {
+        if(i < availableData.length -1) {
           checkNewPage(2);
           doc.setDrawColor(200, 200, 200);
           doc.line(margin, yPosition - 5, pageWidth - margin, yPosition - 5);
+        }
+      }
+
+      if (unavailableData.length > 0) {
+        checkNewPage(20);
+        yPosition += 10;
+        doc.setFontSize(headerSize).setFont(font.name, 'bold');
+        doc.text(`Imagens Indisponíveis (${unavailableData.length})`, margin, yPosition);
+        yPosition += lineHeight.large;
+        
+        const groupedByPlate = unavailableData.reduce((acc, item) => {
+          const plate = item["License Plate"] || "Sem Placa";
+          if (!acc[plate]) {
+            acc[plate] = [];
+          }
+          acc[plate].push(item);
+          return acc;
+        }, {} as Record<string, PlateData[]>);
+
+        for (const plate in groupedByPlate) {
+          checkNewPage(10);
+          doc.setFontSize(bodySize).setFont(font.name, 'bold');
+          doc.text(plate, margin, yPosition);
+          yPosition += lineHeight.medium;
+
+          const items = groupedByPlate[plate].sort((a,b) => 
+             new Date(a["Detected At"] || 0).getTime() - new Date(b["Detected At"] || 0).getTime()
+          );
+
+          for (const item of items) {
+             checkNewPage(5);
+             doc.setFontSize(smallSize).setFont(font.name, 'normal');
+             const date = item["Detected At"] ? new Date(item["Detected At"]).toLocaleString('pt-BR') : 'Data desconhecida';
+             const address = item.CameraAddress || 'Endereço desconhecido';
+             const text = `${date} - ${address}`;
+             const textLines = doc.splitTextToSize(text, pageWidth - margin - margin - 5);
+             doc.text(textLines, margin + 5, yPosition);
+             yPosition += textLines.length * lineHeight.small;
+          }
+          yPosition += lineHeight.small;
         }
       }
   
@@ -476,8 +515,12 @@ export default function PlateGalleryPage() {
   };
 
 
+  const currentData = useMemo(() => {
+    return polygonFilteredData || data;
+  }, [data, polygonFilteredData]);
+
   const filteredData = useMemo(() => {
-    return data.filter(item => {
+    return currentData.filter(item => {
       const typeFilterMatch = filter === 'all' || item.BodyType === filter;
       
       const normalizedSearch = searchQuery.toLowerCase();
@@ -522,7 +565,7 @@ export default function PlateGalleryPage() {
 
       return typeFilterMatch && searchFilterMatch && timeFilterMatch;
     });
-  }, [data, filter, searchQuery, startTime, endTime]);
+  }, [currentData, filter, searchQuery, startTime, endTime]);
 
   const availableData = useMemo(() => filteredData.filter(item => !imageErrors[item.id]), [filteredData, imageErrors]);
   const unavailableData = useMemo(() => filteredData.filter(item => imageErrors[item.id]), [filteredData, imageErrors]);
@@ -730,6 +773,22 @@ export default function PlateGalleryPage() {
               </Button>
           </div>
         )}
+        
+        {polygonFilteredData && (
+          <div className="mt-4 text-center">
+            <Card className="inline-block p-2 pr-4">
+              <div className="flex items-center gap-4">
+                <p className="text-sm font-medium">
+                  Mostrando {polygonFilteredData.length} resultados filtrados pelo polígono no mapa.
+                </p>
+                <Button variant="ghost" size="icon" onClick={() => setPolygonFilteredData(null)}>
+                  <FilterX className="h-4 w-4" />
+                  <span className="sr-only">Limpar filtro de polígono</span>
+                </Button>
+              </div>
+            </Card>
+          </div>
+        )}
 
         <main className="mt-8">
           {isLoading && (
@@ -779,11 +838,11 @@ export default function PlateGalleryPage() {
             <DialogHeader>
                 <DialogTitle>Mapa de Câmeras</DialogTitle>
                 <DialogDescription>
-                    Visualização das câmeras no mapa. Use o zoom para agrupar ou desagrupar os marcadores.
+                    Visualização das câmeras no mapa. Use as ferramentas para desenhar uma área e filtrar os resultados.
                 </DialogDescription>
             </DialogHeader>
             <div className="flex-grow rounded-md overflow-hidden">
-              {isMapOpen && <VehicleMap key={mapKey} data={availableData} />}
+              {isMapOpen && <VehicleMap key={mapKey} data={data} onFilter={setPolygonFilteredData} />}
             </div>
         </DialogContent>
       </Dialog>
