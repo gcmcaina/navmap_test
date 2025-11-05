@@ -8,6 +8,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import type { PlateData } from '@/types';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { Clock, MapPin } from 'lucide-react';
 
 interface TimelineSidebarProps {
   data: PlateData[];
@@ -46,7 +47,6 @@ export function TimelineSidebar({ data, onItemClick }: TimelineSidebarProps) {
                     <div className="absolute left-2 -translate-x-1/2 w-3 h-3 rounded-full bg-primary border-2 border-background cursor-pointer hover:scale-125 transition-transform" />
                     {detectedDate && (
                         <div className="ml-8 text-xs text-muted-foreground cursor-pointer">
-                            <p className="font-semibold">{format(detectedDate, 'HH:mm:ss')}</p>
                             <p>{format(detectedDate, 'dd/MM/yy', { locale: ptBR })}</p>
                         </div>
                     )}
@@ -68,11 +68,23 @@ export function TimelineSidebar({ data, onItemClick }: TimelineSidebarProps) {
                 unoptimized
               />
             </div>
-            <div className="p-2">
+            <div className="p-2 space-y-1">
               <p className="font-bold text-lg">{hoveredItem['License Plate']}</p>
               <p className="text-sm text-muted-foreground">
-                {hoveredItem.Marca !== "Marca não Informada" ? `${hoveredItem.Marca} ${hoveredItem.Model}` : ''}
+                {hoveredItem.Marca !== "Marca não Informada" ? `${hoveredItem.Marca} ${hoveredItem.Model}` : 'Veículo não identificado'}
               </p>
+               {hoveredItem['Detected At'] && (
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <Clock className="w-3 h-3" />
+                    <span>{new Date(hoveredItem['Detected At']).toLocaleString('pt-BR')}</span>
+                  </div>
+                )}
+                {hoveredItem.CameraAddress && (
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <MapPin className="w-3 h-3" />
+                    <span className="truncate">{hoveredItem.CameraAddress}</span>
+                  </div>
+                )}
             </div>
           </CardContent>
         </Card>
