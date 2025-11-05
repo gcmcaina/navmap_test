@@ -6,7 +6,7 @@ import * as XLSX from "xlsx";
 import Image from "next/image";
 import type { PlateData } from "@/types";
 import { Button } from "@/components/ui/button";
-import { Input }from "@/components/ui/input";
+import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
@@ -359,132 +359,101 @@ export default function PlateGalleryPage() {
         }
         return false;
       };
+
+      const addTextInfo = (item: PlateData, x: number, y: number) => {
+        let textY = y;
+        doc.setFontSize(bodySize).setFont(font.name, 'bold');
+        doc.text(item["License Plate"] || 'N/A', x, textY);
+        textY += lineHeight.large;
+        
+        doc.setFontSize(smallSize).setFont(font.name, 'normal');
+        if (item.Marca && item.Marca !== "Marca não Informada") {
+            doc.text(`Veículo: ${item.Marca} ${item.Model || ''}`, x, textY);
+            textY += lineHeight.small;
+        }
+        
+        if (item['Detected At']) {
+          doc.text(`Data/Hora: ${new Date(item['Detected At']).toLocaleString('pt-BR')}`, x, textY);
+          textY += lineHeight.small;
+        }
+        if (item.CameraAddress) {
+          const locationLines = doc.splitTextToSize(`Localização: ${item.CameraAddress}`, pageWidth - x - margin);
+          doc.text(locationLines, x, textY);
+          textY += (locationLines.length * lineHeight.small);
+        }
+
+        return textY;
+      }
       
       let pageNum = 1;
       addBackground();
       addHeader(pageNum);
 
-      for (let i = 0; i < availableData.length; i++) {
-        const item = availableData[i];
+      const allItemsToReport = [...availableData, ...unavailableData];
+
+      for (let i = 0; i < allItemsToReport.length; i++) {
+        const item = allItemsToReport[i];
+        const isUnavailable = imageErrors[item.id];
         const itemHeight = 75; // Approximate height for each item
         checkNewPage(itemHeight);
 
-        try {
-          const response = await fetch(item['Image URL']);
-          if (!response.ok) throw new Error('Falha ao buscar imagem.');
-          const blob = await response.blob();
-          const dataUrl = await new Promise<string>((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onloadend = () => resolve(reader.result as string);
-            reader.onerror = reject;
-            reader.readAsDataURL(blob);
-          });
-          
-          const img = new (window as any).Image();
-          img.src = dataUrl;
-          await new Promise(resolve => { img.onload = resolve; });
+        const textX = margin + (isUnavailable ? 0 : 90);
 
-          const imgMaxWidth = 80;
-          const imgMaxHeight = 60;
-          let imgWidth = img.width;
-          let imgHeight = img.height;
-          const aspectRatio = imgWidth / imgHeight;
+        if (isUnavailable) {
+          doc.setFontSize(smallSize).setFont(font.name, 'italic');
+          doc.text('Imagem indisponível', margin, yPosition + 5);
+          addTextInfo(item, textX, yPosition + 15);
+        } else {
+          try {
+            const response = await fetch(item['Image URL']);
+            if (!response.ok) throw new Error('Falha ao buscar imagem.');
+            const blob = await response.blob();
+            const dataUrl = await new Promise<string>((resolve, reject) => {
+              const reader = new FileReader();
+              reader.onloadend = () => resolve(reader.result as string);
+              reader.onerror = reject;
+              reader.readAsDataURL(blob);
+            });
+            
+            const img = new (window as any).Image();
+            img.src = dataUrl;
+            await new Promise(resolve => { img.onload = resolve; });
 
-          if (imgWidth > imgMaxWidth) {
-            imgWidth = imgMaxWidth;
-            imgHeight = imgWidth / aspectRatio;
+            const imgMaxWidth = 80;
+            const imgMaxHeight = 60;
+            let imgWidth = img.width;
+            let imgHeight = img.height;
+            const aspectRatio = imgWidth / imgHeight;
+
+            if (imgWidth > imgMaxWidth) {
+              imgWidth = imgMaxWidth;
+              imgHeight = imgWidth / aspectRatio;
+            }
+            if (imgHeight > imgMaxHeight) {
+              imgHeight = imgMaxHeight;
+              imgWidth = imgHeight * aspectRatio;
+            }
+            
+            doc.addImage(dataUrl, 'JPEG', margin, yPosition, imgWidth, imgHeight);
+
+            let textY = addTextInfo(item, textX, yPosition + 5);
+            
+            doc.setTextColor(pdfLayoutConfig.linkColor.r, pdfLayoutConfig.linkColor.g, pdfLayoutConfig.linkColor.b);
+            doc.textWithLink('Ver Imagem', textX, textY, { url: item['Image URL'] });
+            doc.setTextColor(0, 0, 0);
+
+          } catch (e) {
+            console.error(`Falha ao carregar imagem para o relatório: ${item['Image URL']}`, e);
+            doc.text('Imagem indisponível', margin, yPosition + 25);
+            addTextInfo(item, textX, yPosition + 5);
           }
-          if (imgHeight > imgMaxHeight) {
-            imgHeight = imgMaxHeight;
-            imgWidth = imgHeight * aspectRatio;
-          }
-          
-          doc.addImage(dataUrl, 'JPEG', margin, yPosition, imgWidth, imgHeight);
-
-          let textX = margin + imgWidth + 10;
-          let textY = yPosition + 5;
-
-          doc.setFontSize(bodySize).setFont(font.name, 'bold');
-          doc.text(item["License Plate"] || 'N/A', textX, textY);
-          textY += lineHeight.large;
-          
-          doc.setFontSize(smallSize).setFont(font.name, 'normal');
-          if (item.Marca && item.Marca !== "Marca não Informada") {
-              doc.text(`Veículo: ${item.Marca} ${item.Model || ''}`, textX, textY);
-              textY += lineHeight.small;
-          }
-          
-          if (item['Detected At']) {
-            doc.text(`Data/Hora: ${new Date(item['Detected At']).toLocaleString('pt-BR')}`, textX, textY);
-            textY += lineHeight.small;
-          }
-          if (item.CameraAddress) {
-            const locationLines = doc.splitTextToSize(`Localização: ${item.CameraAddress}`, pageWidth - textX - margin);
-            doc.text(locationLines, textX, textY);
-            textY += (locationLines.length * lineHeight.small);
-          }
-          
-          doc.setTextColor(pdfLayoutConfig.linkColor.r, pdfLayoutConfig.linkColor.g, pdfLayoutConfig.linkColor.b);
-          doc.textWithLink('Ver Imagem', textX, textY, { url: item['Image URL'] });
-          doc.setTextColor(0, 0, 0);
-
-
-        } catch (e) {
-          console.error(`Falha ao carregar imagem para o relatório: ${item['Image URL']}`, e);
-          let textX = margin + 90;
-          doc.text('Imagem indisponível', margin, yPosition + 25);
-          doc.setFontSize(bodySize).setFont(font.name, 'bold');
-          doc.text(item["License Plate"] || 'N/A', textX, yPosition + 5);
         }
         yPosition += itemHeight;
-        if(i < availableData.length -1) {
+        if(i < allItemsToReport.length -1) {
           checkNewPage(2);
           doc.setDrawColor(200, 200, 200);
           doc.line(margin, yPosition - 5, pageWidth - margin, yPosition - 5);
         }
-      }
-
-      if (unavailableData.length > 0) {
-        checkNewPage(20);
-        yPosition += 10;
-        doc.setFontSize(bodySize).setFont(font.name, 'bold');
-        doc.text(`Registros com Imagens Indisponíveis (${unavailableData.length})`, margin, yPosition);
-        yPosition += lineHeight.large;
-
-        const unavailableGroupedByPlate = unavailableData.reduce((acc, item) => {
-            const plate = item["License Plate"] || "N/A";
-            if (!acc[plate]) {
-                acc[plate] = [];
-            }
-            acc[plate].push(item);
-            return acc;
-        }, {} as Record<string, PlateData[]>);
-
-        Object.keys(unavailableGroupedByPlate).forEach(plate => {
-            checkNewPage(10)
-            
-            doc.setFontSize(smallSize).setFont(font.name, 'bold');
-            doc.text(plate, margin, yPosition);
-            yPosition += lineHeight.medium;
-
-            const items = unavailableGroupedByPlate[plate].sort((a, b) => 
-                new Date(a["Detected At"] || 0).getTime() - new Date(b["Detected At"] || 0).getTime()
-            );
-
-            items.forEach(item => {
-                checkNewPage(5);
-                doc.setFontSize(smallSize - 1).setFont(font.name, 'normal');
-                
-                const date = item["Detected At"] ? new Date(item["Detected At"]).toLocaleString('pt-BR') : 'Data desconhecida';
-                const address = item.CameraAddress || 'Endereço desconhecido';
-                const text = `${date} - ${address}`;
-
-                const textLines = doc.splitTextToSize(text, pageWidth - margin * 2);
-                doc.text(textLines, margin + 5, yPosition);
-                yPosition += (textLines.length * lineHeight.small);
-            });
-            yPosition += 3; // Space between plates
-        });
       }
   
       const finalFilename = reportFilename.trim() ? `${reportFilename.trim()}.pdf` : 'relatorio_lpr.pdf';
