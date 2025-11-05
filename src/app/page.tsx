@@ -39,7 +39,6 @@ import {
 import JSZip from "jszip";
 import { saveAs } from "file-saver";
 import { Label } from "@/components/ui/label";
-import { cameraAddressMapping } from "@/lib/camera-data";
 import Link from "next/link";
 import jsPDF from 'jspdf';
 import dynamic from 'next/dynamic';
@@ -127,10 +126,6 @@ export default function PlateGalleryPage() {
           const cameraID = cameraIDIndex > -1 ? String(row[cameraIDIndex] || '') : undefined;
           let cameraAddress = cameraAddressIndex > -1 ? String(row[cameraAddressIndex] || '') : undefined;
           
-          if (!cameraAddress && cameraID) {
-            cameraAddress = cameraAddressMapping[cameraID];
-          }
-
           let bodyType: 'Carro' | 'Moto' | undefined;
           let marca = "";
           let model = "";
@@ -466,7 +461,7 @@ export default function PlateGalleryPage() {
         }, {} as Record<string, PlateData[]>);
 
         Object.keys(unavailableGroupedByPlate).forEach(plate => {
-            if(checkNewPage(10)) yPosition += 5; // Add space after page break
+            checkNewPage(10)
             
             doc.setFontSize(smallSize).setFont(font.name, 'bold');
             doc.text(plate, margin, yPosition);
@@ -618,8 +613,8 @@ export default function PlateGalleryPage() {
               <p className="text-sm text-muted-foreground">
                 {item.Marca !== "Marca não Informada" ? `${item.Marca} ${item.Model}` : "Marca não Informada"}
               </p>
-              {item.CameraAddress && item.CameraID && (
-                <Link href={`https://smartsampa.sentinelx.com.br/cameras/cameras/details/${item.CameraID}`} target="_blank" className="text-xs text-muted-foreground truncate hover:underline">
+              {item.CameraAddress && (
+                <Link href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(item.CameraAddress)}`} target="_blank" className="text-xs text-muted-foreground truncate hover:underline">
                   {item.CameraAddress}
                 </Link>
               )}
@@ -892,9 +887,9 @@ export default function PlateGalleryPage() {
                    {selectedItem["Detected At"] && (
                       <p><span className="font-semibold">Detectado em:</span> {new Date(selectedItem["Detected At"]).toLocaleString()}</p>
                    )}
-                   {selectedItem.CameraAddress && selectedItem.CameraID && (
+                   {selectedItem.CameraAddress && (
                      <p><span className="font-semibold">Local:</span>{' '}
-                       <Link href={`https://smartsampa.sentinelx.com.br/cameras/cameras/details/${selectedItem.CameraID}`} target="_blank" className="hover:underline">
+                       <Link href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(selectedItem.CameraAddress)}`} target="_blank" className="hover:underline">
                          {selectedItem.CameraAddress}
                        </Link>
                      </p>
@@ -908,12 +903,3 @@ export default function PlateGalleryPage() {
     </div>
   );
 }
-
-    
-
-    
-
-
-
-
-    
