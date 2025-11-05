@@ -188,7 +188,9 @@ export default function VehicleMap({ data, onFilter, onFilterComplete }: Vehicle
         
         // Ensure map resizes correctly
         setTimeout(() => {
-            map.invalidateSize();
+            if (mapInstanceRef.current) {
+                mapInstanceRef.current.invalidateSize();
+            }
         }, 100);
 
         return () => {
