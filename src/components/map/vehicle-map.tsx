@@ -51,6 +51,91 @@ export default function VehicleMap({ data, onFilter, onFilterComplete }: Vehicle
 
         setupLeafletIcons();
 
+        // Tradução para Português (Brasil)
+        L.drawLocal = {
+            draw: {
+                toolbar: {
+                    actions: {
+                        title: 'Cancelar desenho',
+                        text: 'Cancelar'
+                    },
+                    finish: {
+                        title: 'Finalizar desenho',
+                        text: 'Finalizar'
+                    },
+                    undo: {
+                        title: 'Apagar último ponto desenhado',
+                        text: 'Apagar último ponto'
+                    },
+                    buttons: {
+                        polygon: 'Desenhar um polígono',
+                        rectangle: 'Desenhar um retângulo',
+                        polyline: 'Desenhar uma polilinha',
+                        circle: 'Desenhar um círculo',
+                        marker: 'Desenhar um marcador',
+                        circlemarker: 'Desenhar um marcador de círculo'
+                    }
+                },
+                handlers: {
+                    polygon: {
+                        tooltip: {
+                            start: 'Clique para começar a desenhar a forma.',
+                            cont: 'Clique para continuar desenhando a forma.',
+                            end: 'Clique no primeiro ponto para fechar esta forma.'
+                        }
+                    },
+                    rectangle: {
+                        tooltip: {
+                            start: 'Clique e arraste para desenhar um retângulo.'
+                        }
+                    },
+                    simpleShape: {
+                        tooltip: {
+                            end: 'Solte o mouse para finalizar o desenho.'
+                        }
+                    }
+                }
+            },
+            edit: {
+                toolbar: {
+                    actions: {
+                        save: {
+                            title: 'Salvar alterações.',
+                            text: 'Salvar'
+                        },
+                        cancel: {
+                            title: 'Cancelar edição, descarta todas as alterações.',
+                            text: 'Cancelar'
+                        },
+                        clearAll: {
+                            title: 'Limpar todas as camadas.',
+                            text: 'Limpar Tudo'
+                        }
+                    },
+                    buttons: {
+                        edit: 'Editar camadas.',
+                        editDisabled: 'Nenhuma camada para editar.',
+                        remove: 'Apagar camadas.',
+                        removeDisabled: 'Nenhuma camada para apagar.'
+                    }
+                },
+                handlers: {
+                    edit: {
+                        tooltip: {
+                            text: 'Arraste os marcadores ou o polígono para editar a forma.',
+                            subtext: 'Clique em cancelar para desfazer as alterações.'
+                        }
+                    },
+                    remove: {
+                        tooltip: {
+                            text: 'Clique em uma forma para removê-la'
+                        }
+                    }
+                }
+            }
+        };
+
+
         const center: [number, number] = [-23.55052, -46.633303]; // São Paulo
         const map = L.map(mapContainerRef.current).setView(center, 11);
         mapInstanceRef.current = map;
