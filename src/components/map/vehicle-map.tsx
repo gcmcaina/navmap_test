@@ -12,6 +12,8 @@ import 'leaflet-draw/dist/leaflet.draw.css';
 
 import type { PlateData } from '@/types';
 import { useToast } from "@/hooks/use-toast";
+import markerIcon from 'leaflet/dist/images/marker-icon.png';
+import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png';
 import markerShadow from 'leaflet/dist/images/marker-shadow.png';
 
 
@@ -314,3 +316,4 @@ export default function VehicleMap({ data, onFilter, onFilterComplete }: Vehicle
         <div ref={mapContainerRef} style={{ height: '100%', width: '100%' }} />
     );
 }
+ 
