@@ -11,27 +11,39 @@ import 'leaflet.markercluster/dist/MarkerCluster.Default.css';
 import 'leaflet-draw/dist/leaflet.draw.css';
 
 import type { PlateData } from '@/types';
+import { useToast } from "@/hooks/use-toast";
+
 
 const setupLeafletIcons = () => {
     if (typeof window !== 'undefined') {
-        delete (L.Icon.Default.prototype as any)._getIconUrl;
-        L.Icon.Default.mergeOptions({
-            iconRetinaUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon-2x.png',
-            iconUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon.png',
-            shadowUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png',
-        });
+        try {
+            delete (L.Icon.Default.prototype as any)._getIconUrl;
+            L.Icon.Default.mergeOptions({
+                iconRetinaUrl: require('leaflet/dist/images/marker-icon-2x.png').default,
+                iconUrl: require('leaflet/dist/images/marker-icon.png').default,
+                shadowUrl: require('leaflet/dist/images/marker-shadow.png').default,
+            });
+        } catch(e) {
+            // Fallback for environments where require might not work as expected
+            L.Icon.Default.mergeOptions({
+                iconRetinaUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon-2x.png',
+                iconUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon.png',
+                shadowUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png',
+            });
+        }
     }
 };
 
 type VehicleMapProps = {
   data: PlateData[];
-  onFilter: (filteredData: PlateData[]) => void;
+  onFilter: (filteredData: PlateData[] | null) => void;
 };
 
 export default function VehicleMap({ data, onFilter }: VehicleMapProps) {
     const mapContainerRef = useRef<HTMLDivElement>(null);
     const mapInstanceRef = useRef<L.Map | null>(null);
     const drawnItemsRef = useRef<L.FeatureGroup>(new L.FeatureGroup());
+    const { toast } = useToast();
     
     useEffect(() => {
         if (typeof window === 'undefined' || !mapContainerRef.current) {
@@ -52,10 +64,19 @@ export default function VehicleMap({ data, onFilter }: VehicleMapProps) {
 
         const drawControl = new L.Control.Draw({
             draw: {
-                polygon: true,
+                polygon: {
+                    allowIntersection: false,
+                    shapeOptions: {
+                        color: '#f06eaa'
+                    }
+                },
+                rectangle: {
+                     shapeOptions: {
+                        color: '#f06eaa'
+                    }
+                },
                 polyline: false,
-                rectangle: true,
-                circle: true,
+                circle: false,
                 marker: false,
                 circlemarker: false,
             },
@@ -65,6 +86,49 @@ export default function VehicleMap({ data, onFilter }: VehicleMapProps) {
             }
         });
         map.addControl(drawControl);
+
+        const filterMarkers = (layer: L.Layer) => {
+            let bounds: L.LatLngBounds;
+            let isPolygon = false;
+        
+            if (layer instanceof L.Polygon) {
+                bounds = layer.getBounds();
+                isPolygon = true;
+            } else if (layer instanceof L.Rectangle) {
+                bounds = layer.getBounds();
+            } else {
+                return;
+            }
+        
+            const filteredData = data.filter(item => {
+                if (item.lat && item.lng) {
+                    const point = L.latLng(item.lat, item.lng);
+                    if(isPolygon && layer instanceof L.Polygon) {
+                        // More accurate check for polygon
+                        let inside = false;
+                        const polyPoints = layer.getLatLngs()[0] as L.LatLng[];
+                        for (let i = 0, j = polyPoints.length - 1; i < polyPoints.length; j = i++) {
+                            const xi = polyPoints[i].lng, yi = polyPoints[i].lat;
+                            const xj = polyPoints[j].lng, yj = polyPoints[j].lat;
+        
+                            const intersect = ((yi > point.lat) !== (yj > point.lat))
+                                && (point.lng < (xj - xi) * (point.lat - yi) / (yj - yi) + xi);
+                            if (intersect) inside = !inside;
+                        }
+                        return inside;
+                    }
+                    // Fallback to bounds check for rectangles or simple polygons
+                    return bounds.contains(point);
+                }
+                return false;
+            });
+            
+            onFilter(filteredData);
+            toast({
+              title: "Filtro Aplicado",
+              description: `${filteredData.length} veículos encontrados na área selecionada. Feche o mapa para ver os resultados.`
+            });
+        };
 
         map.on(L.Draw.Event.CREATED, (event: any) => {
             const layer = event.layer;
@@ -81,37 +145,13 @@ export default function VehicleMap({ data, onFilter }: VehicleMapProps) {
         });
         
         map.on(L.Draw.Event.DELETED, () => {
-             onFilter(data); // Reset filter when shapes are deleted
+             onFilter(null);
+             toast({
+              title: "Filtro Removido",
+              description: "Exibindo todos os veículos."
+            });
         });
-
-        const filterMarkers = (layer: L.Layer) => {
-            const geojson = (layer as L.Polygon).toGeoJSON();
-            const poly = geojson.geometry;
-
-            const filteredData = data.filter(item => {
-                if (item.lat && item.lng && poly.type === 'Polygon') {
-                    const point: [number, number] = [item.lng, item.lat];
-                    let inside = false;
-                    const polygonCoords = poly.coordinates[0];
-                    for (let i = 0, j = polygonCoords.length - 1; i < polygonCoords.length; j = i++) {
-                        const xi = polygonCoords[i][0], yi = polygonCoords[i][1];
-                        const xj = polygonCoords[j][0], yj = polygonCoords[j][1];
-
-                        const intersect = ((yi > point[1]) !== (yj > point[1]))
-                            && (point[0] < (xj - xi) * (point[1] - yi) / (yj - yi) + xi);
-                        if (intersect) inside = !inside;
-                    }
-                    return inside;
-                }
-                return false;
-            });
-            onFilter(filteredData);
-            toast({
-              title: "Filtro Aplicado",
-              description: `${filteredData.length} veículos encontrados na área selecionada. Feche o mapa para ver os resultados.`
-            });
-        };
-
+        
 
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
@@ -119,12 +159,7 @@ export default function VehicleMap({ data, onFilter }: VehicleMapProps) {
 
         const markers = L.markerClusterGroup();
         
-        const dataWithCoords = data.map(item => {
-            if (item.lat && item.lng) {
-              return { ...item, lat: item.lat, lng: item.lng };
-            }
-            return null;
-        }).filter(Boolean) as (PlateData & { lat: number, lng: number })[];
+        const dataWithCoords = data.filter(item => typeof item.lat === 'number' && typeof item.lng === 'number') as (PlateData & { lat: number, lng: number })[];
 
 
         if (dataWithCoords.length > 0) {
@@ -147,12 +182,13 @@ export default function VehicleMap({ data, onFilter }: VehicleMapProps) {
     
             map.addLayer(markers);
 
-            const bounds = L.latLngBounds(dataWithCoords.map(item => [item.lat, item.lng]));
+            const bounds = markers.getBounds();
             if (bounds.isValid()) {
                 map.fitBounds(bounds, { padding: [50, 50] });
             }
         }
         
+        // Ensure map resizes correctly
         setTimeout(() => {
             map.invalidateSize();
         }, 100);
@@ -163,17 +199,12 @@ export default function VehicleMap({ data, onFilter }: VehicleMapProps) {
                 mapInstanceRef.current = null;
             }
         };
-    }, [data, onFilter]); 
+    }, [data, onFilter, toast]); 
 
     return (
         <div ref={mapContainerRef} style={{ height: '100%', width: '100%' }} />
     );
 }
 
-// Custom hook to show toast, as useToast can only be used in client components
-function toast(props: { title: string; description: string }) {
-  if (typeof window !== 'undefined') {
-    const event = new CustomEvent('show-toast', { detail: props });
-    window.dispatchEvent(event);
-  }
-}
+
+    
