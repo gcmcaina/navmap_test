@@ -32,12 +32,19 @@ import {
   ImageOff,
   FilterX,
   PanelLeft,
+  Truck,
 } from "lucide-react";
 import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import JSZip from "jszip";
 import { saveAs } from "file-saver";
 import { Label } from "@/components/ui/label";
@@ -58,7 +65,7 @@ export default function PlateGalleryPage() {
   const [isDownloading, setIsDownloading] = useState(false);
   const [isGeneratingReport, setIsGeneratingReport] = useState(false);
   const [selectedItem, setSelectedItem] = useState<PlateData | null>(null);
-  const [filter, setFilter] = useState<'all' | 'Carro' | 'Moto'>('all');
+  const [filter, setFilter] = useState<'all' | 'Carro' | 'Moto' | 'Caminhão'>('all');
   const [searchQuery, setSearchQuery] = useState("");
   const { toast } = useToast();
   const [isHeaderOpen, setIsHeaderOpen] = useState(true);
@@ -133,7 +140,7 @@ export default function PlateGalleryPage() {
           const cameraID = cameraIDIndex > -1 ? String(row[cameraIDIndex] || '') : undefined;
           let cameraAddress = cameraAddressIndex > -1 ? String(row[cameraAddressIndex] || '') : undefined;
           
-          let bodyType: 'Carro' | 'Moto' | undefined;
+          let bodyType: 'Carro' | 'Moto' | 'Caminhão' | undefined;
           let marca = "";
           let model = "";
 
@@ -143,6 +150,8 @@ export default function PlateGalleryPage() {
               bodyType = 'Carro';
             } else if (['motocicleta', 'motoneta', 'moto'].includes(bodyTypeRaw)) {
               bodyType = 'Moto';
+            } else if (['caminhão', 'caminhao'].includes(bodyTypeRaw)) {
+                bodyType = 'Caminhão';
             }
             marca = marcaIndex > -1 && row[marcaIndex] ? String(row[marcaIndex]).trim() : "";
             model = modelIndex > -1 && row[modelIndex] ? String(row[modelIndex]).trim() : "";
@@ -724,18 +733,34 @@ export default function PlateGalleryPage() {
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
             </div>
             <div className="flex gap-2">
-              <Button variant={filter === 'all' ? 'default' : 'outline'} size="sm" onClick={() => setFilter('all')}>
-                <List className="mr-2 h-4 w-4" />
-                Todos
-              </Button>
-              <Button variant={filter === 'Carro' ? 'default' : 'outline'} size="sm" onClick={() => setFilter('Carro')}>
-                 <Car className="mr-2 h-4 w-4" />
-                Carros
-              </Button>
-              <Button variant={filter === 'Moto' ? 'default' : 'outline'} size="sm" onClick={() => setFilter('Moto')}>
-                <Bike className="mr-2 h-4 w-4" />
-                Motos
-              </Button>
+               <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" size="sm" className="w-[120px] justify-start">
+                      {filter === 'all' && <><List className="mr-2 h-4 w-4" /> Todos</>}
+                      {filter === 'Carro' && <><Car className="mr-2 h-4 w-4" /> Carros</>}
+                      {filter === 'Moto' && <><Bike className="mr-2 h-4 w-4" /> Motos</>}
+                      {filter === 'Caminhão' && <><Truck className="mr-2 h-4 w-4" /> Caminhões</>}
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent>
+                    <DropdownMenuItem onSelect={() => setFilter('all')}>
+                      <List className="mr-2 h-4 w-4" />
+                      Todos
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onSelect={() => setFilter('Carro')}>
+                      <Car className="mr-2 h-4 w-4" />
+                      Carros
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onSelect={() => setFilter('Moto')}>
+                      <Bike className="mr-2 h-4 w-4" />
+                      Motos
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onSelect={() => setFilter('Caminhão')}>
+                      <Truck className="mr-2 h-4 w-4" />
+                      Caminhões
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
             </div>
             <Collapsible className="w-full md:w-auto">
               <CollapsibleTrigger asChild>
