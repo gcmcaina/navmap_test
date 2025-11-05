@@ -31,9 +31,10 @@ const setupLeafletIcons = () => {
 type VehicleMapProps = {
   data: PlateData[];
   onFilter: (filteredData: PlateData[] | null) => void;
+  onFilterComplete: () => void;
 };
 
-export default function VehicleMap({ data, onFilter }: VehicleMapProps) {
+export default function VehicleMap({ data, onFilter, onFilterComplete }: VehicleMapProps) {
     const mapContainerRef = useRef<HTMLDivElement>(null);
     const mapInstanceRef = useRef<L.Map | null>(null);
     const drawnItemsRef = useRef<L.FeatureGroup>(new L.FeatureGroup());
@@ -122,6 +123,9 @@ export default function VehicleMap({ data, onFilter }: VehicleMapProps) {
               title: "Filtro Aplicado",
               description: `${filteredData.length} veículos encontrados na área selecionada. Feche o mapa para ver os resultados.`
             });
+            if (onFilterComplete) {
+              onFilterComplete();
+            }
         };
 
         map.on(L.Draw.Event.CREATED, (event: any) => {
@@ -193,7 +197,7 @@ export default function VehicleMap({ data, onFilter }: VehicleMapProps) {
                 mapInstanceRef.current = null;
             }
         };
-    }, [data, onFilter, toast]); 
+    }, [data, onFilter, onFilterComplete, toast]); 
 
     return (
         <div ref={mapContainerRef} style={{ height: '100%', width: '100%' }} />

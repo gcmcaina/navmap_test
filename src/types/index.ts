@@ -21,5 +21,3 @@ export type CameraCoordinate = {
   lat: number;
   lng: number;
 };
-
-    

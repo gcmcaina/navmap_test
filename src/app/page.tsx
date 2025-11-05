@@ -841,7 +841,7 @@ export default function PlateGalleryPage() {
                 </DialogDescription>
             </DialogHeader>
             <div className="flex-grow rounded-md overflow-hidden">
-              {isMapOpen && <VehicleMap key={mapKey} data={data} onFilter={setPolygonFilteredData} />}
+              {isMapOpen && <VehicleMap key={mapKey} data={data} onFilter={setPolygonFilteredData} onFilterComplete={() => setIsMapOpen(false)} />}
             </div>
         </DialogContent>
       </Dialog>
