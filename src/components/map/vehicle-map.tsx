@@ -23,6 +23,8 @@ const setupLeafletIcons = () => {
         iconRetinaUrl: 'https://gcmcaina.github.io/navmap/assets/marker-icon2x.png',
         iconUrl: 'https://gcmcaina.github.io/navmap/assets/marker-icon.png',
         shadowUrl: markerShadow.src,
+        iconSize: [33, 40],
+        iconAnchor: [16, 40],
     });
 };
 
