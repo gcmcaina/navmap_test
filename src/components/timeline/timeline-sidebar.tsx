@@ -51,9 +51,9 @@ export function TimelineSidebar({ data, onItemClick, onDateHover }: TimelineSide
   return (
     <aside className="relative w-64 hidden lg:block">
       <ScrollArea className="h-[calc(100vh-8rem)] pr-4">
-        <div className="relative flex flex-col items-start">
+        <div className="relative flex flex-col items-start py-4">
           {/* Linha vertical da timeline */}
-          <div className="absolute left-2 top-0 bottom-0 w-0.5 bg-border -z-10" />
+          <div className="absolute left-[0.4rem] top-0 h-full w-0.5 bg-border" />
 
           {timelineItems.map(([date, items]) => {
              const firstItem = items[0];
@@ -67,7 +67,7 @@ export function TimelineSidebar({ data, onItemClick, onDateHover }: TimelineSide
                 onMouseLeave={handleMouseLeave}
                 onClick={() => onItemClick(firstItem)}
                 >
-                    <div className="absolute left-2 -translate-x-1/2 w-3 h-3 rounded-full bg-primary border-2 border-background cursor-pointer hover:scale-125 transition-transform" />
+                    <div className="z-10 absolute left-2 -translate-x-1/2 w-3 h-3 rounded-full bg-primary border-2 border-background cursor-pointer hover:scale-125 transition-transform" />
                     {detectedDate && (
                         <div className="ml-8 text-xs text-muted-foreground cursor-pointer flex items-center gap-2">
                            <p>{format(detectedDate, 'dd/MM/yy', { locale: ptBR })}</p>
