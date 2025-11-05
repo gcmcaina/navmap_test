@@ -195,7 +195,6 @@ export default function VehicleMap({ data, onFilter, onFilterComplete }: Vehicle
 
         return () => {
             if (mapInstanceRef.current) {
-                drawnItemsRef.current.clearLayers();
                 mapInstanceRef.current.remove();
                 mapInstanceRef.current = null;
             }
