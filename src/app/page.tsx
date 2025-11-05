@@ -31,6 +31,7 @@ import {
   ImageIcon,
   ImageOff,
   FilterX,
+  PanelLeft,
 } from "lucide-react";
 import {
   Collapsible,
@@ -46,6 +47,7 @@ import dynamic from 'next/dynamic';
 import { logoBase64 } from "@/lib/logo-base64";
 import { pdfLayoutConfig } from "@/lib/pdf-layout";
 import { cameraCoordinates } from '@/lib/camera-coordinates';
+import { TimelineSidebar } from "@/components/timeline/timeline-sidebar";
 
 const VehicleMap = dynamic(() => import('@/components/map/vehicle-map'), { ssr: false });
 
@@ -73,6 +75,7 @@ export default function PlateGalleryPage() {
   const [mapKey, setMapKey] = useState(Date.now());
   const [reportFilename, setReportFilename] = useState("relatorio_lpr");
   const [polygonFilteredData, setPolygonFilteredData] = useState<PlateData[] | null>(null);
+  const [isTimelineOpen, setIsTimelineOpen] = useState(false);
 
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -566,8 +569,15 @@ export default function PlateGalleryPage() {
     });
   }, [currentData, filter, searchQuery, startTime, endTime]);
 
-  const availableData = useMemo(() => filteredData.filter(item => !imageErrors[item.id]), [filteredData, imageErrors]);
-  const unavailableData = useMemo(() => filteredData.filter(item => imageErrors[item.id]), [filteredData, imageErrors]);
+  const sortedData = useMemo(() => {
+    return [...filteredData].sort((a, b) => 
+      new Date(b["Detected At"] || 0).getTime() - new Date(a["Detected At"] || 0).getTime()
+    );
+  }, [filteredData]);
+
+
+  const availableData = useMemo(() => sortedData.filter(item => !imageErrors[item.id]), [sortedData, imageErrors]);
+  const unavailableData = useMemo(() => sortedData.filter(item => imageErrors[item.id]), [sortedData, imageErrors]);
 
 
   useEffect(() => {
@@ -594,7 +604,7 @@ export default function PlateGalleryPage() {
   }, [selectedItem, availableData]);
   
   const renderGrid = (items: PlateData[], isUnavailable = false) => (
-    <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4">
+    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4">
       {items.map((item) => (
           <Card
             key={item.id}
@@ -795,6 +805,10 @@ export default function PlateGalleryPage() {
                 <Map className="mr-2 h-4 w-4" />
                 Ver no Mapa
               </Button>
+              <Button variant="outline" size="sm" onClick={() => setIsTimelineOpen(!isTimelineOpen)}>
+                <PanelLeft className="mr-2 h-4 w-4" />
+                {isTimelineOpen ? "Ocultar Linha do Tempo" : "Mostrar Linha do Tempo"}
+              </Button>
           </div>
         )}
         
@@ -814,46 +828,53 @@ export default function PlateGalleryPage() {
           </div>
         )}
 
-        <main className="mt-8">
-          {isLoading && (
-            <div className="flex justify-center items-center h-64 flex-col">
-              <Loader2 className="h-12 w-12 animate-spin text-primary mb-4" />
-              <p className="text-lg text-muted-foreground">Processando seu arquivo...</p>
-            </div>
-          )}
-          {!isLoading && data.length === 0 && (
-             <Card className="mt-6 text-center h-64 flex flex-col justify-center items-center border-dashed bg-muted/20">
-                <FileSpreadsheet className="h-16 w-16 text-muted-foreground mb-4" />
-                <h3 className="text-xl font-semibold">Nenhuma Imagem para Exibir</h3>
-                <p className="text-muted-foreground mt-2">Faça o upload de um arquivo para começar.</p>
-             </Card>
-          )}
-          {!isLoading && availableData.length > 0 && renderGrid(availableData)}
-          {!isLoading && data.length > 0 && availableData.length === 0 && unavailableData.length === 0 && (
-             <Card className="mt-6 text-center h-64 flex flex-col justify-center items-center border-dashed bg-muted/20">
-                <Search className="h-16 w-16 text-muted-foreground mb-4" />
-                <h3 className="text-xl font-semibold">Nenhum item encontrado</h3>
-                <p className="text-muted-foreground mt-2">Ajuste seus filtros ou carregue um novo arquivo.</p>
-             </Card>
-          )}
-          
-          {unavailableData.length > 0 && (
-            <Collapsible className="mt-12">
-              <CollapsibleTrigger asChild>
-                <div className="flex items-center gap-2 cursor-pointer w-full border-b pb-2 mb-4 justify-center">
-                  <ImageOff className="text-muted-foreground"/>
-                  <h2 className="text-lg font-semibold text-muted-foreground">
-                    Itens com Imagens Indisponíveis ({unavailableData.length})
-                  </h2>
-                  <ChevronDown className="transition-transform duration-300 [&[data-state=open]]:-rotate-180" />
+        <main className="mt-8 flex gap-8">
+            {isTimelineOpen && data.length > 0 && (
+                <TimelineSidebar 
+                data={sortedData}
+                onItemClick={handleImageClick}
+                />
+            )}
+            <div className="flex-1">
+                {isLoading && (
+                <div className="flex justify-center items-center h-64 flex-col">
+                    <Loader2 className="h-12 w-12 animate-spin text-primary mb-4" />
+                    <p className="text-lg text-muted-foreground">Processando seu arquivo...</p>
                 </div>
-              </CollapsibleTrigger>
-              <CollapsibleContent>
-                {renderGrid(unavailableData, true)}
-              </CollapsibleContent>
-            </Collapsible>
-          )}
-
+                )}
+                {!isLoading && data.length === 0 && (
+                <Card className="mt-6 text-center h-64 flex flex-col justify-center items-center border-dashed bg-muted/20">
+                    <FileSpreadsheet className="h-16 w-16 text-muted-foreground mb-4" />
+                    <h3 className="text-xl font-semibold">Nenhuma Imagem para Exibir</h3>
+                    <p className="text-muted-foreground mt-2">Faça o upload de um arquivo para começar.</p>
+                </Card>
+                )}
+                {!isLoading && availableData.length > 0 && renderGrid(availableData)}
+                {!isLoading && data.length > 0 && availableData.length === 0 && unavailableData.length === 0 && (
+                <Card className="mt-6 text-center h-64 flex flex-col justify-center items-center border-dashed bg-muted/20">
+                    <Search className="h-16 w-16 text-muted-foreground mb-4" />
+                    <h3 className="text-xl font-semibold">Nenhum item encontrado</h3>
+                    <p className="text-muted-foreground mt-2">Ajuste seus filtros ou carregue um novo arquivo.</p>
+                </Card>
+                )}
+                
+                {unavailableData.length > 0 && (
+                <Collapsible className="mt-12">
+                    <CollapsibleTrigger asChild>
+                    <div className="flex items-center gap-2 cursor-pointer w-full border-b pb-2 mb-4 justify-center">
+                        <ImageOff className="text-muted-foreground"/>
+                        <h2 className="text-lg font-semibold text-muted-foreground">
+                        Itens com Imagens Indisponíveis ({unavailableData.length})
+                        </h2>
+                        <ChevronDown className="transition-transform duration-300 [&[data-state=open]]:-rotate-180" />
+                    </div>
+                    </CollapsibleTrigger>
+                    <CollapsibleContent>
+                    {renderGrid(unavailableData, true)}
+                    </CollapsibleContent>
+                </Collapsible>
+                )}
+            </div>
         </main>
       </div>
 
