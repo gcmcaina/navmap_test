@@ -65,7 +65,7 @@ export default function VehicleMap({ data }: { data: PlateData[] }) {
                         <img src="${item['Image URL']}" alt="${item['License Plate'] || 'Imagem'}" style="width:100%; height:100%; object-fit:cover;" />
                     </div>
                     <p class="font-bold text-lg">${item['License Plate']}</p>
-                    <p>${item.CameraAddress || ''}</p>
+                    <p>${item.CameraAddress || item['CameraAddress'] || ''}</p>
                     ${item['Detected At'] ? `<p class="text-sm text-gray-500">${new Date(item['Detected At']).toLocaleString()}</p>` : ''}
                 </div>
             `;
@@ -94,3 +94,5 @@ export default function VehicleMap({ data }: { data: PlateData[] }) {
         <div ref={mapContainerRef} style={{ height: '100%', width: '100%' }} />
     );
 }
+
+    

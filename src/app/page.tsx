@@ -112,6 +112,7 @@ export default function PlateGalleryPage() {
         const modelIndex = findHeaderIndex(["modelo", "model"]);
         const trustLevelIndex = findHeaderIndex(["confiança", "trust level", "f"]);
         const cameraIDIndex = findHeaderIndex(["id da câmera", "camera id", "c"]);
+        const cameraAddressIndex = findHeaderIndex(["endereço da câmera", "camera address"]);
 
 
         if (imageUrlIndex === -1) {
@@ -124,7 +125,11 @@ export default function PlateGalleryPage() {
           const isTrusted = trustLevel >= 86;
           
           const cameraID = cameraIDIndex > -1 ? String(row[cameraIDIndex] || '') : undefined;
-          const cameraAddress = cameraID ? cameraAddressMapping[cameraID] : undefined;
+          let cameraAddress = cameraAddressIndex > -1 ? String(row[cameraAddressIndex] || '') : undefined;
+          
+          if (!cameraAddress && cameraID) {
+            cameraAddress = cameraAddressMapping[cameraID];
+          }
 
           let bodyType: 'Carro' | 'Moto' | undefined;
           let marca = "";
@@ -909,3 +914,6 @@ export default function PlateGalleryPage() {
     
 
 
+
+
+    
