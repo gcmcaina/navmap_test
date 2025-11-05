@@ -15,3 +15,11 @@ export type PlateData = {
   lat?: number;
   lng?: number;
 };
+
+export type CameraCoordinate = {
+  id: string;
+  lat: number;
+  lng: number;
+};
+
+    

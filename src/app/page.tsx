@@ -45,6 +45,7 @@ import jsPDF from 'jspdf';
 import dynamic from 'next/dynamic';
 import { logoBase64 } from "@/lib/logo-base64";
 import { pdfLayoutConfig } from "@/lib/pdf-layout";
+import { cameraCoordinates } from '@/lib/camera-coordinates';
 
 const VehicleMap = dynamic(() => import('@/components/map/vehicle-map'), { ssr: false });
 
@@ -115,10 +116,7 @@ export default function PlateGalleryPage() {
         const trustLevelIndex = findHeaderIndex(["confiança", "trust level", "f"]);
         const cameraIDIndex = findHeaderIndex(["id da câmera", "camera id", "c"]);
         const cameraAddressIndex = findHeaderIndex(["endereço da câmera", "camera address"]);
-        const latIndex = findHeaderIndex(["lat", "latitude"]);
-        const lngIndex = findHeaderIndex(["lng", "longitude"]);
-
-
+        
         if (imageUrlIndex === -1) {
             throw new Error("A coluna 'URL da imagem' não foi encontrada na planilha.");
         }
@@ -145,6 +143,8 @@ export default function PlateGalleryPage() {
             marca = marcaIndex > -1 && row[marcaIndex] ? String(row[marcaIndex]).trim() : "";
             model = modelIndex > -1 && row[modelIndex] ? String(row[modelIndex]).trim() : "";
           }
+
+          const coords = cameraID ? cameraCoordinates.find(c => c.id === cameraID) : undefined;
           
           return {
             id: `${file.name}-${index}`,
@@ -156,8 +156,8 @@ export default function PlateGalleryPage() {
             "Model": model,
             "CameraID": cameraID,
             "CameraAddress": cameraAddress,
-            "lat": latIndex > -1 ? parseFloat(row[latIndex]) : undefined,
-            "lng": lngIndex > -1 ? parseFloat(row[lngIndex]) : undefined,
+            "lat": coords?.lat,
+            "lng": coords?.lng,
           }
         }).filter(item => item["Image URL"]);
         
@@ -329,7 +329,6 @@ export default function PlateGalleryPage() {
 
 
       const addBackground = () => {
-        // Only add image if it's not the placeholder
         if (logoBase64 && !logoBase64.startsWith('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=')) {
             const logoWidth = image.width;
             const logoHeight = image.height;
@@ -399,7 +398,7 @@ export default function PlateGalleryPage() {
 
       for (let i = 0; i < availableData.length; i++) {
         const item = availableData[i];
-        const itemHeight = 75; // Approximate height for each item
+        const itemHeight = 75;
         checkNewPage(itemHeight);
 
         const textX = margin + 90;
