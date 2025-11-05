@@ -619,17 +619,17 @@ export default function PlateGalleryPage() {
                 />
               )}
             </div>
-            <div className="p-3 bg-card text-center">
+            <div className="p-3 bg-card text-left space-y-1">
               <p className="font-bold text-lg truncate">{item["License Plate"]}</p>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-sm text-muted-foreground truncate">
                 {item.Marca !== "Marca não Informada" ? `${item.Marca} ${item.Model}` : "Marca não Informada"}
               </p>
               {item.CameraAddress && (
-                <Link href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(item.CameraAddress)}`} target="_blank" className="text-xs text-muted-foreground truncate hover:underline">
+                <Link href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(item.CameraAddress)}`} target="_blank" className="text-xs text-muted-foreground truncate hover:underline block">
                   {item.CameraAddress}
                 </Link>
               )}
-              {item["Detected At"] && <p className="text-sm text-muted-foreground">{new Date(item["Detected At"]).toLocaleString()}</p>}
+              {item["Detected At"] && <p className="text-xs text-muted-foreground">{new Date(item["Detected At"]).toLocaleString()}</p>}
             </div>
           </Card>
         )
@@ -643,29 +643,29 @@ export default function PlateGalleryPage() {
         <Collapsible
           open={isHeaderOpen}
           onOpenChange={setIsHeaderOpen}
-          className="w-full"
+          className="w-full mb-6"
         >
-          <div className="flex justify-between items-center mb-2">
+          <div className="flex justify-between items-center">
             <CollapsibleTrigger asChild>
-                <div className="flex items-center gap-2 cursor-pointer">
+                <div className="flex items-center gap-2 cursor-pointer group">
                     <h1 className="text-4xl font-bold text-primary">LPR</h1>
-                    <ChevronDown className={`transition-transform duration-300 ${isHeaderOpen ? "" : "-rotate-90"}`} />
-                    <span className="sr-only">Toggle Header</span>
+                    <ChevronDown className={`transition-transform duration-300 group-hover:text-accent ${isHeaderOpen ? "" : "-rotate-90"}`} />
+                    <span className="sr-only">Mostrar/Ocultar formulário de upload</span>
                 </div>
             </CollapsibleTrigger>
           </div>
           <CollapsibleContent>
-             <div className="text-center">
+             <div className="text-center py-4">
                 <p className="text-muted-foreground mt-2 max-w-2xl mx-auto">
                     Faça o upload de uma planilha para exibir as imagens a partir de qualquer URL encontrada no arquivo.
                 </p>
-                <Card className="max-w-lg mx-auto mt-4 mb-8">
+                <Card className="max-w-lg mx-auto mt-4">
                 <CardHeader>
-                    <CardTitle>Anexe o Arquivo</CardTitle>
+                    <CardTitle className="text-xl">Anexe o Arquivo</CardTitle>
                 </CardHeader>
                 <CardContent>
                     <div className="flex-grow">
-                    <label className="text-sm font-medium mb-2 block sr-only">Carregar Arquivo</label>
+                    <label htmlFor="file-upload" className="sr-only">Carregar Arquivo</label>
                     <div className="relative">
                         <Input
                         type="file"
@@ -674,6 +674,7 @@ export default function PlateGalleryPage() {
                         accept=".csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel"
                         onChange={handleFileUpload}
                         disabled={isLoading}
+                        aria-describedby="file-upload-help"
                         />
                         <Button asChild variant="outline" className="w-full justify-center text-left font-normal" disabled={isLoading}>
                         <label htmlFor="file-upload" className="cursor-pointer">
@@ -685,6 +686,7 @@ export default function PlateGalleryPage() {
                             {isLoading ? 'Processando...' : 'Selecione um arquivo CSV ou XLSX'}
                         </label>
                         </Button>
+                        <p id="file-upload-help" className="text-xs text-muted-foreground mt-2">Formatos suportados: .csv, .xlsx, .xls</p>
                     </div>
                     </div>
                 </CardContent>
@@ -695,77 +697,100 @@ export default function PlateGalleryPage() {
 
 
         {data.length > 0 && (
-          <div className="mt-8 flex flex-col sm:flex-row justify-center items-center gap-4 flex-wrap">
-            <div className="relative w-full max-w-xs">
+          <div className="p-4 bg-muted/50 rounded-lg flex flex-col md:flex-row justify-center items-center gap-4 flex-wrap sticky top-4 z-10 border">
+            <div className="relative w-full md:w-auto md:flex-grow max-w-sm">
               <Input 
                 placeholder="Pesquisar por placa, marca ou modelo..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10"
+                className="pl-10 h-9"
+                aria-label="Pesquisa global"
               />
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
             </div>
             <div className="flex gap-2">
-              <Button variant={filter === 'all' ? 'default' : 'outline'} onClick={() => setFilter('all')}>
+              <Button variant={filter === 'all' ? 'default' : 'outline'} size="sm" onClick={() => setFilter('all')}>
                 <List className="mr-2 h-4 w-4" />
                 Todos
               </Button>
-              <Button variant={filter === 'Carro' ? 'default' : 'outline'} onClick={() => setFilter('Carro')}>
+              <Button variant={filter === 'Carro' ? 'default' : 'outline'} size="sm" onClick={() => setFilter('Carro')}>
                  <Car className="mr-2 h-4 w-4" />
                 Carros
               </Button>
-              <Button variant={filter === 'Moto' ? 'default' : 'outline'} onClick={() => setFilter('Moto')}>
+              <Button variant={filter === 'Moto' ? 'default' : 'outline'} size="sm" onClick={() => setFilter('Moto')}>
                 <Bike className="mr-2 h-4 w-4" />
                 Motos
               </Button>
             </div>
-            <div className="flex gap-4 items-center">
-              <Clock className="w-5 h-5 text-muted-foreground" />
-              <div className="grid gap-1">
-                <Label htmlFor="start-time" className="text-xs">Início</Label>
-                <Input 
-                  id="start-time"
-                  type="time"
-                  value={startTime}
-                  onChange={(e) => setStartTime(e.target.value)}
-                  className="w-32"
-                />
-              </div>
-              <div className="grid gap-1">
-                <Label htmlFor="end-time" className="text-xs">Fim</Label>
-                <Input 
-                  id="end-time"
-                  type="time"
-                  value={endTime}
-                  onChange={(e) => setEndTime(e.target.value)}
-                  className="w-32"
-                />
-              </div>
-            </div>
-             <Button onClick={handleDownloadAll} disabled={isDownloading || availableData.length === 0}>
+            <Collapsible className="w-full md:w-auto">
+              <CollapsibleTrigger asChild>
+                <Button variant="outline" size="sm">Filtros Avançados <ChevronDown className="ml-2 h-4 w-4"/></Button>
+              </CollapsibleTrigger>
+              <CollapsibleContent>
+                <div className="mt-4 md:absolute md:mt-2 md:bg-card md:p-4 md:rounded-lg md:shadow-lg md:border flex flex-col md:flex-row gap-4 items-center">
+                    <div className="flex gap-4 items-center">
+                    <Clock className="w-5 h-5 text-muted-foreground" />
+                    <div className="grid gap-1">
+                        <Label htmlFor="start-time" className="text-xs">Início</Label>
+                        <Input 
+                        id="start-time"
+                        type="time"
+                        value={startTime}
+                        onChange={(e) => setStartTime(e.target.value)}
+                        className="w-32"
+                        />
+                    </div>
+                    <div className="grid gap-1">
+                        <Label htmlFor="end-time" className="text-xs">Fim</Label>
+                        <Input 
+                        id="end-time"
+                        type="time"
+                        value={endTime}
+                        onChange={(e) => setEndTime(e.target.value)}
+                        className="w-32"
+                        />
+                    </div>
+                    </div>
+                </div>
+              </CollapsibleContent>
+            </Collapsible>
+             <Button onClick={handleDownloadAll} size="sm" variant="outline" disabled={isDownloading || availableData.length === 0}>
                 {isDownloading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileArchive className="mr-2 h-4 w-4" />}
-                {isDownloading ? 'Baixando...' : `Baixar ${availableData.length} Imagens`}
+                {isDownloading ? 'Baixando...' : `Baixar Imagens`}
               </Button>
-              <div className="grid gap-1">
-                <Label htmlFor="report-filename" className="text-xs">Nome do Relatório</Label>
-                <Input
-                  id="report-filename"
-                  type="text"
-                  value={reportFilename}
-                  onChange={(e) => setReportFilename(e.target.value)}
-                  className="w-40"
-                  placeholder="relatorio_lpr"
-                />
-              </div>
-              <Button onClick={handleGenerateReport} disabled={isGeneratingReport || data.length === 0}>
-                {isGeneratingReport ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileText className="mr-2 h-4 w-4" />}
-                {isGeneratingReport ? 'Gerando...' : 'Gerar Relatório'}
-              </Button>
+              <Collapsible className="w-full md:w-auto">
+                <CollapsibleTrigger asChild>
+                    <Button variant="outline" size="sm">
+                        <FileText className="mr-2 h-4 w-4" /> Gerar Relatório
+                    </Button>
+                </CollapsibleTrigger>
+                 <CollapsibleContent>
+                    <div className="mt-4 md:absolute md:mt-2 md:bg-card md:p-4 md:rounded-lg md:shadow-lg md:border flex flex-col md:flex-row gap-2 items-center">
+                        <div className="grid gap-1">
+                            <Label htmlFor="report-filename" className="text-xs">Nome do Relatório</Label>
+                            <Input
+                            id="report-filename"
+                            type="text"
+                            value={reportFilename}
+                            onChange={(e) => setReportFilename(e.target.value)}
+                            className="w-40 h-9"
+                            placeholder="relatorio_lpr"
+                            />
+                        </div>
+                        <Button onClick={handleGenerateReport} size="sm" disabled={isGeneratingReport || data.length === 0}>
+                            {isGeneratingReport ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
+                            {isGeneratingReport ? 'Gerando...' : 'Baixar PDF'}
+                        </Button>
+                    </div>
+                </CollapsibleContent>
+              </Collapsible>
               <Button onClick={() => {
                 setMapKey(Date.now());
                 setIsMapOpen(true);
                 }} 
                 disabled={availableData.length === 0}
+                variant="outline"
+                size="sm"
                 >
                 <Map className="mr-2 h-4 w-4" />
                 Ver no Mapa
@@ -930,3 +955,5 @@ export default function PlateGalleryPage() {
     </div>
   );
 }
+
+    
