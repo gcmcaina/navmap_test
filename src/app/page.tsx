@@ -829,12 +829,6 @@ export default function PlateGalleryPage() {
         )}
 
         <main className="mt-8 flex gap-8">
-            {isTimelineOpen && data.length > 0 && (
-                <TimelineSidebar 
-                data={sortedData}
-                onItemClick={handleImageClick}
-                />
-            )}
             <div className="flex-1">
                 {isLoading && (
                 <div className="flex justify-center items-center h-64 flex-col">
@@ -875,6 +869,12 @@ export default function PlateGalleryPage() {
                 </Collapsible>
                 )}
             </div>
+            {isTimelineOpen && data.length > 0 && (
+                <TimelineSidebar 
+                data={sortedData}
+                onItemClick={handleImageClick}
+                />
+            )}
         </main>
       </div>
 
@@ -976,5 +976,3 @@ export default function PlateGalleryPage() {
     </div>
   );
 }
-
-    
