@@ -76,6 +76,7 @@ export default function PlateGalleryPage() {
   const [reportFilename, setReportFilename] = useState("relatorio_lpr");
   const [polygonFilteredData, setPolygonFilteredData] = useState<PlateData[] | null>(null);
   const [isTimelineOpen, setIsTimelineOpen] = useState(false);
+  const [hoveredDate, setHoveredDate] = useState<string | null>(null);
 
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -604,11 +605,15 @@ export default function PlateGalleryPage() {
   }, [selectedItem, availableData]);
   
   const renderGrid = (items: PlateData[], isUnavailable = false) => (
-    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4">
-      {items.map((item) => (
+    <div className={`grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4 transition-all duration-300 ${hoveredDate ? 'blur-sm brightness-50' : ''}`}>
+      {items.map((item) => {
+        const itemDate = item['Detected At'] ? new Date(item['Detected At']).toLocaleDateString('pt-BR') : null;
+        const isHovered = hoveredDate && itemDate === hoveredDate;
+
+        return (
           <Card
             key={item.id}
-            className={`overflow-hidden group transition-all duration-300 ${!isUnavailable ? 'hover:shadow-xl cursor-pointer' : 'bg-muted/50'}`}
+            className={`overflow-hidden group transition-all duration-300 ${!isUnavailable ? 'hover:shadow-xl cursor-pointer' : 'bg-muted/50'} ${isHovered ? '!blur-none !brightness-100' : ''}`}
             onClick={() => !isUnavailable && handleImageClick(item)}
           >
             <div className="relative w-full aspect-square bg-muted">
@@ -643,7 +648,7 @@ export default function PlateGalleryPage() {
             </div>
           </Card>
         )
-      )}
+      })}
     </div>
   );
   
@@ -873,6 +878,7 @@ export default function PlateGalleryPage() {
                 <TimelineSidebar 
                 data={sortedData}
                 onItemClick={handleImageClick}
+                onDateHover={setHoveredDate}
                 />
             )}
         </main>
