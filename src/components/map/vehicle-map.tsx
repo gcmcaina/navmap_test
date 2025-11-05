@@ -18,15 +18,16 @@ import markerShadow from 'leaflet/dist/images/marker-shadow.png';
 
 
 const setupLeafletIcons = () => {
-    if (typeof window !== 'undefined') {
-        // @ts-ignore
-        delete L.Icon.Default.prototype._getIconUrl;
-        L.Icon.Default.mergeOptions({
-            iconRetinaUrl: markerIcon2x.src,
-            iconUrl: markerIcon.src,
-            shadowUrl: markerShadow.src,
-        });
-    }
+    // This is a common fix for Leaflet with bundlers like Webpack/Next.js
+    // It explicitly sets the paths for the default marker icons.
+    // @ts-ignore
+    delete L.Icon.Default.prototype._getIconUrl;
+
+    L.Icon.Default.mergeOptions({
+        iconRetinaUrl: markerIcon2x.src,
+        iconUrl: markerIcon.src,
+        shadowUrl: markerShadow.src,
+    });
 };
 
 type VehicleMapProps = {
@@ -200,6 +201,3 @@ export default function VehicleMap({ data, onFilter }: VehicleMapProps) {
         <div ref={mapContainerRef} style={{ height: '100%', width: '100%' }} />
     );
 }
-
-
-    
