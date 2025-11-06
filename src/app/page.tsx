@@ -33,6 +33,8 @@ import {
   FilterX,
   PanelLeft,
   Truck,
+  Sun,
+  Moon,
 } from "lucide-react";
 import {
   Collapsible,
@@ -69,6 +71,7 @@ export default function PlateGalleryPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const { toast } = useToast();
   const [isHeaderOpen, setIsHeaderOpen] = useState(true);
+  const [theme, setTheme] = useState<'dark' | 'light'>('dark');
 
   const [zoom, setZoom] = useState(1);
   const [position, setPosition] = useState({ x: 0, y: 0 });
@@ -84,6 +87,15 @@ export default function PlateGalleryPage() {
   const [polygonFilteredData, setPolygonFilteredData] = useState<PlateData[] | null>(null);
   const [isTimelineOpen, setIsTimelineOpen] = useState(false);
   const [hoveredDate, setHoveredDate] = useState<string | null>(null);
+
+  useEffect(() => {
+    document.documentElement.classList.remove('dark', 'light');
+    document.documentElement.classList.add(theme);
+  }, [theme]);
+
+  const toggleTheme = () => {
+    setTheme(prevTheme => prevTheme === 'dark' ? 'light' : 'dark');
+  };
 
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -677,6 +689,10 @@ export default function PlateGalleryPage() {
                     <span className="sr-only">Mostrar/Ocultar formulário de upload</span>
                 </div>
             </CollapsibleTrigger>
+            <Button onClick={toggleTheme} variant="outline" size="icon">
+              {theme === 'dark' ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+              <span className="sr-only">Alternar tema</span>
+            </Button>
           </div>
           <CollapsibleContent>
              <div className="text-center py-4">
