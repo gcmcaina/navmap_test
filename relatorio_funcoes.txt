@@ -1,0 +1,44 @@
+Relatório Técnico das Funções do Site
+
+### 1. Carregamento e Processamento de Dados (`handleFileUpload` em `page.tsx`)
+
+*   **Tecnologia:** Utiliza a API `FileReader` do navegador para ler o conteúdo de arquivos (XLSX, CSV) de forma assíncrona, sem sobrecarregar o servidor.
+*   **Processamento:** A biblioteca `xlsx` (SheetJS) é usada para decodificar o conteúdo binário da planilha. Ela extrai os dados da primeira aba, converte as linhas em um array JSON e identifica as colunas relevantes (como "URL da imagem", "placa", "detectado em", etc.) de forma flexível, procurando por variações nos nomes do cabeçalho.
+*   **Estruturação de Dados:** Os dados brutos da planilha são mapeados para um array de objetos `PlateData[]`, padronizando informações como o tipo de veículo (`BodyType`) e associando as coordenadas geográficas de cada câmera a partir do arquivo estático `src/lib/camera-coordinates.ts`.
+*   **Gerenciamento de Estado:** O estado principal do aplicativo, `data`, é atualizado com o array de objetos estruturados, o que faz com que a interface do React seja renderizada novamente para exibir os dados.
+
+### 2. Filtragem e Ordenação Dinâmica (`useMemo` em `page.tsx`)
+
+*   **Performance:** A filtragem e ordenação são otimizadas com o hook `useMemo` do React. Isso garante que os dados só sejam reprocessados quando um dos filtros (pesquisa, tipo de veículo, horário, etc.) é alterado, evitando recálculos desnecessários a cada nova renderização.
+*   **Critérios de Filtragem:**
+    *   **Texto:** A pesquisa textual é "case-insensitive" e busca correspondências na placa, marca ou modelo do veículo.
+    *   **Tipo de Veículo:** Filtra com base na seleção do menu `DropdownMenu` ("Carro", "Moto", "Caminhão").
+    *   **Horário:** Permite a filtragem por um intervalo de tempo, comparando a hora de detecção de cada registro.
+    *   **Polígono (Mapa):** Filtra os pontos que estão geograficamente dentro da área desenhada pelo usuário no mapa.
+*   **Ordenação:** Os dados exibidos são sempre ordenados por data de detecção, do mais recente para o mais antigo, usando o método `sort()` no array de dados filtrados.
+
+### 3. Visualização em Grade e Modal de Imagem (`renderGrid` e `Dialog` em `page.tsx`)
+
+*   **Renderização da Grade:** A função `renderGrid` mapeia o array de dados (`availableData` ou `unavailableData`) para componentes `<Card>` do `shadcn/ui`, criando a galeria de imagens. Cada card exibe as informações principais do veículo.
+*   **Modal Interativo:** Ao clicar em um card, um componente `<Dialog>` é aberto para exibir a imagem em tamanho maior. Este modal permite interações como:
+    *   **Zoom e Pan (Mover):** O usuário pode usar a roda do mouse para dar zoom e clicar e arrastar para mover a imagem ampliada. Essa funcionalidade é controlada por múltiplos estados (`zoom`, `position`) e manipuladores de eventos do mouse (`onWheel`, `onMouseDown`, etc.).
+    *   **Navegação:** O usuário pode navegar entre as imagens da galeria usando as setas do teclado (Esquerda/Direita).
+
+### 4. Visualização no Mapa (`VehicleMap.tsx`)
+
+*   **Tecnologia:** Renderiza um mapa interativo usando a biblioteca `Leaflet`. Para lidar com um grande número de marcadores de forma otimizada, ele utiliza a `leaflet.markercluster` para agrupá-los visualmente.
+*   **Desenho e Filtragem Geográfica:** Utiliza a extensão `leaflet-draw` para permitir que o usuário desenhe polígonos ou retângulos diretamente no mapa. Após o desenho, o componente calcula quais pontos de dados estão dentro da área selecionada e envia essa informação de volta para a página principal (`page.tsx`) através da função `onFilter`, atualizando a galeria de imagens.
+
+### 5. Linha do Tempo Vertical (`TimelineSidebar.tsx`)
+
+*   **Componente de UI:** É um componente de barra lateral que oferece uma forma alternativa de navegar pelos dados.
+*   **Agrupamento:** Ele processa os dados e os agrupa por dia, exibindo um único marcador para cada dia que contém capturas, junto com a contagem total de itens (`ex: 18/07/24 (5)`).
+*   **Interatividade:**
+    *   **Hover (Passar o mouse):** Ao passar o mouse sobre um dia, ele exibe um "mini-card" com a prévia da primeira imagem daquele dia e aciona um efeito de destaque na galeria principal (escurecendo os itens que não correspondem à data).
+    *   **Click:** Ao clicar, ele abre a imagem no modal principal, da mesma forma que um clique na galeria.
+
+### 6. Geração de Relatórios em PDF (`handleGenerateReport` em `page.tsx`)
+
+*   **Tecnologia:** Utiliza a biblioteca `jsPDF` para criar um documento PDF dinamicamente no navegador.
+*   **Lógica:** Itera sobre os dados filtrados (`availableData`), busca cada imagem (`fetch`), a converte para um formato de dados URL (`FileReader`) e a insere no documento PDF junto com suas informações textuais (placa, data, local). Ele também gerencia a paginação, adicionando novas páginas conforme necessário para evitar que o conteúdo seja cortado.
+*   **Imagens Indisponíveis:** O relatório também lista de forma organizada os itens cujas imagens não puderam ser carregadas, garantindo um registro completo.
