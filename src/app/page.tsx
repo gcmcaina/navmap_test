@@ -700,14 +700,12 @@ export default function PlateGalleryPage() {
                     Faça o upload de uma planilha para exibir as imagens a partir de qualquer URL encontrada no arquivo.
                 </p>
                 <Card className="max-w-lg mx-auto mt-4">
-                <CardHeader>
+                  <CardHeader>
                     <CardTitle className="text-xl">Anexe o Arquivo</CardTitle>
-                </CardHeader>
-                <CardContent>
+                  </CardHeader>
+                  <CardContent>
                     <div className="flex-grow">
-                    <label htmlFor="file-upload" className="sr-only">Carregar Arquivo</label>
-                    <div className="relative">
-                        <Input
+                      <Input
                         type="file"
                         id="file-upload"
                         className="hidden"
@@ -715,21 +713,20 @@ export default function PlateGalleryPage() {
                         onChange={handleFileUpload}
                         disabled={isLoading}
                         aria-describedby="file-upload-help"
-                        />
-                        <Button asChild variant="outline" className="w-full justify-center text-left font-normal" disabled={isLoading}>
-                        <label htmlFor="file-upload" className="cursor-pointer">
-                            {isLoading ? (
+                      />
+                      <Button asChild variant="outline" className="w-full justify-center text-left font-normal" disabled={isLoading}>
+                        <Label htmlFor="file-upload" className="cursor-pointer flex items-center justify-center w-full h-full">
+                          {isLoading ? (
                             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                            ) : (
+                          ) : (
                             <Upload className="mr-2 h-4 w-4" />
-                            )}
-                            {isLoading ? 'Processando...' : 'Selecione um arquivo CSV ou XLSX'}
-                        </label>
-                        </Button>
-                        <p id="file-upload-help" className="text-xs text-muted-foreground mt-2">Formatos suportados: .csv, .xlsx, .xls</p>
+                          )}
+                          {isLoading ? 'Processando...' : 'Selecione um arquivo CSV ou XLSX'}
+                        </Label>
+                      </Button>
+                      <p id="file-upload-help" className="text-xs text-muted-foreground mt-2">Formatos suportados: .csv, .xlsx, .xls</p>
                     </div>
-                    </div>
-                </CardContent>
+                  </CardContent>
                 </Card>
             </div>
           </CollapsibleContent>
