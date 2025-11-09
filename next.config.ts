@@ -6,8 +6,9 @@ let assetPrefix = ''
 let basePath = ''
 
 if (isGithubActions) {
-  const repo = process.env.GITHUB_REPOSITORY.replace(/.*?\//, '')
-  assetPrefix = `/${repo}/`
+  // Use 'tools' as the repository name for GitHub Pages
+  const repo = 'tools'
+  assetPrefix = `/${repo}`
   basePath = `/${repo}`
 }
 

@@ -1,7 +1,5 @@
 # Settings to manage and configure a Firebase App Hosting backend.
 # https://firebase.google.com/docs/app-hosting/configure
-runConfig:
-  minInstances: 0
 VpcConnector:
   name: projects/gcm-caina/locations/us-central1/connectors/dev-kfs-vpc
 firebase:
