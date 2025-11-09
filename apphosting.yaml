@@ -1,2 +1,41 @@
 # Settings to manage and configure a Firebase App Hosting backend.
 # https://firebase.google.com/docs/app-hosting/configure
+runConfig:
+  minInstances: 0
+VpcConnector:
+  name: projects/gcm-caina/locations/us-central1/connectors/dev-kfs-vpc
+firebase:
+  projectId: gcm-caina
+  serving:
+    - id: default
+      site: lpr-dev-kfs
+      static:
+        - glob: /_next/static/**
+          # Cache static assets for 1 year.
+          headers:
+            "Cache-Control": "public, max-age=31536000, immutable"
+        - glob: /static/**
+          # Cache static assets for 1 hour.
+          headers:
+            "Cache-Control": "public, max-age=3600, immutable"
+    - id: lpr-http
+      site: lpr-http
+      static:
+        - glob: /_next/static/**
+          # Cache static assets for 1 year.
+          headers:
+            "Cache-Control": "public, max-age=31536000, immutable"
+        - glob: /static/**
+          # Cache static assets for 1 hour.
+          headers:
+            "Cache-Control": "public, max-age=3600, immutable"
+Headers:
+  - glob: "**"
+    headers:
+      "Cross-Origin-Opener-Policy": "same-origin"
+      "Cross-Origin-Embedder-Policy": "require-corp"
+      "Content-Security-Policy": "frame-ancestors 'self' https://*.google.com https://*.firebaseapp.com"
+      "X-Frame-Options": "SAMEORIGIN"
+      "X-XSS-Protection": "0"
+      "X-Content-Type-Options": "nosniff"
+      "Strict-Transport-Security": "max-age=31536000; includeSubdomains; preload"
