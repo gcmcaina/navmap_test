@@ -178,10 +178,10 @@ export default function PlateGalleryPage() {
           return {
             id: `${file.name}-${index}`,
             "Image URL": row[imageUrlIndex],
-            "License Plate": licensePlateIndex > -1 ? row[licensePlateIndex] : "N/A",
+            "License Plate": licensePlateIndex > -1 ? row[licensePlateIndex] : undefined,
             "Detected At": detectedAtIndex > -1 ? row[detectedAtIndex] : undefined,
             "BodyType": bodyType,
-            "Marca": marca || "Marca não Informada",
+            "Marca": marca,
             "Model": model,
             "CameraID": cameraID,
             "CameraAddress": cameraAddress,
@@ -635,6 +635,8 @@ export default function PlateGalleryPage() {
         const itemDate = item['Detected At'] ? new Date(item['Detected At']).toLocaleDateString('pt-BR') : null;
         const isHovered = hoveredDate && itemDate === hoveredDate;
 
+        const hasInfo = item["License Plate"] || item.Marca || item.CameraAddress || item["Detected At"];
+
         return (
           <Card
             key={item.id}
@@ -659,18 +661,22 @@ export default function PlateGalleryPage() {
                 />
               )}
             </div>
-            <div className="p-3 bg-card text-left space-y-1">
-              <p className="font-bold text-lg truncate">{item["License Plate"]}</p>
-              <p className="text-sm text-muted-foreground truncate">
-                {item.Marca !== "Marca não Informada" ? `${item.Marca} ${item.Model}` : "Marca não Informada"}
-              </p>
-              {item.CameraAddress && (
-                <Link href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(item.CameraAddress)}`} target="_blank" className="text-xs text-muted-foreground truncate hover:underline block">
-                  {item.CameraAddress}
-                </Link>
-              )}
-              {item["Detected At"] && <p className="text-xs text-muted-foreground">{new Date(item["Detected At"]).toLocaleString()}</p>}
-            </div>
+            {hasInfo && (
+              <div className="p-3 bg-card text-left space-y-1">
+                {item["License Plate"] && <p className="font-bold text-lg truncate">{item["License Plate"]}</p>}
+                {item.Marca && (
+                   <p className="text-sm text-muted-foreground truncate">
+                    {`${item.Marca} ${item.Model || ''}`}
+                  </p>
+                )}
+                {item.CameraAddress && (
+                  <Link href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(item.CameraAddress)}`} target="_blank" className="text-xs text-muted-foreground truncate hover:underline block">
+                    {item.CameraAddress}
+                  </Link>
+                )}
+                {item["Detected At"] && <p className="text-xs text-muted-foreground">{new Date(item["Detected At"]).toLocaleString()}</p>}
+              </div>
+            )}
           </Card>
         )
       })}
@@ -999,10 +1005,10 @@ export default function PlateGalleryPage() {
              <div className="flex-shrink-0 p-4 bg-muted/50 rounded-b-lg mt-2">
                 <h3 className="text-xl font-bold">{selectedItem["License Plate"]}</h3>
                 <div className="text-sm text-muted-foreground grid grid-cols-2 gap-x-4 gap-y-1 mt-2">
-                   {selectedItem.Marca && selectedItem.Marca !== 'Marca não Informada' && (
+                   {selectedItem.Marca && (
                      <p><span className="font-semibold">Marca:</span> {selectedItem.Marca}</p>
                    )}
-                   {selectedItem.Marca && selectedItem.Marca !== 'Marca não Informada' && selectedItem.Model && (
+                   {selectedItem.Model && (
                      <p><span className="font-semibold">Modelo:</span> {selectedItem.Model}</p>
                    )}
                    {selectedItem["Detected At"] && (
@@ -1024,3 +1030,4 @@ export default function PlateGalleryPage() {
     </div>
   );
 }
+
