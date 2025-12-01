@@ -130,7 +130,15 @@ export default function PlateGalleryPage() {
           return -1;
         }
 
-        const imageUrlIndex = findHeaderIndex(["url da imagem", "image url"]);
+        let imageUrlIndex = findHeaderIndex(["url da imagem", "image url"]);
+        if (imageUrlIndex === -1) {
+          imageUrlIndex = 0; // Se não encontrar, assume que é a primeira coluna
+          toast({
+            title: "Aviso",
+            description: "Coluna 'URL da imagem' não encontrada. Usando a primeira coluna para as imagens.",
+          });
+        }
+        
         const licensePlateIndex = findHeaderIndex(["placa", "license plate"]);
         const detectedAtIndex = findHeaderIndex(["detectado em", "detected at"]);
         const bodyTypeIndex = findHeaderIndex(["carroceria", "body type"]);
@@ -139,10 +147,6 @@ export default function PlateGalleryPage() {
         const trustLevelIndex = findHeaderIndex(["confiança", "trust level", "f"]);
         const cameraIDIndex = findHeaderIndex(["id da câmera", "camera id", "c"]);
         const cameraAddressIndex = findHeaderIndex(["endereço da câmera", "camera address"]);
-        
-        if (imageUrlIndex === -1) {
-            throw new Error("A coluna 'URL da imagem' não foi encontrada na planilha.");
-        }
         
         const rows = jsonData.slice(1);
         const formattedData: PlateData[] = rows.map((row: any[], index) => {
