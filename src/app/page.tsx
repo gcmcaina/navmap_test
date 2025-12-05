@@ -97,6 +97,61 @@ export default function PlateGalleryPage() {
     setTheme(prevTheme => prevTheme === 'dark' ? 'light' : 'dark');
   };
 
+  const processData = (jsonData: any[], fileName: string): PlateData[] => {
+    if (!Array.isArray(jsonData) || jsonData.length === 0) {
+      throw new Error("O arquivo está vazio ou em um formato não suportado.");
+    }
+  
+    const getField = (item: any, possibleKeys: string[]) => {
+      for (const key of possibleKeys) {
+        if (item[key] !== undefined && item[key] !== null) return item[key];
+      }
+      const lowerCaseKeys = possibleKeys.map(k => k.toLowerCase());
+      for (const itemKey in item) {
+        if (lowerCaseKeys.includes(itemKey.toLowerCase())) return item[itemKey];
+      }
+      return null;
+    };
+  
+    return jsonData.map((item, index) => {
+      const imageUrl = getField(item, ["URL da imagem", "Image URL"]);
+      if (!imageUrl) return null;
+  
+      const trustLevel = getField(item, ["Confiança", "Trust Level", "F"]);
+      const isTrusted = trustLevel ? parseFloat(trustLevel) >= 86 : true;
+  
+      const cameraID = getField(item, ["ID da Câmera", "Camera ID", "C"]);
+      let bodyType: 'Carro' | 'Moto' | 'Caminhão' | undefined;
+      let marca: string | undefined;
+      let model: string | undefined;
+  
+      if (isTrusted) {
+        const bodyTypeRaw = String(getField(item, ["Carroceria", "Body Type"]) || '').toLowerCase();
+        if (['automovel', 'carro'].includes(bodyTypeRaw)) bodyType = 'Carro';
+        else if (['motocicleta', 'motoneta', 'moto'].includes(bodyTypeRaw)) bodyType = 'Moto';
+        else if (['caminhão', 'caminhao'].includes(bodyTypeRaw)) bodyType = 'Caminhão';
+        marca = getField(item, ["Marca"]);
+        model = getField(item, ["Modelo", "Model"]);
+      }
+  
+      const coords = cameraID ? cameraCoordinates.find(c => c.id === cameraID) : undefined;
+  
+      return {
+        id: `${fileName}-${index}`,
+        "Image URL": imageUrl,
+        "License Plate": getField(item, ["Placa", "License Plate"]),
+        "Detected At": getField(item, ["Detectado Em", "Detected At"]),
+        "BodyType": bodyType,
+        "Marca": marca,
+        "Model": model,
+        "CameraID": cameraID,
+        "CameraAddress": getField(item, ["Endereço da Câmera", "Camera Address"]),
+        "lat": coords?.lat,
+        "lng": coords?.lng,
+      };
+    }).filter((item): item is PlateData => item !== null && !!item["Image URL"]);
+  };
+  
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -106,82 +161,25 @@ export default function PlateGalleryPage() {
     setImageErrors({});
     setPolygonFilteredData(null);
     const reader = new FileReader();
+
     reader.onload = (e) => {
       try {
-        const fileData = e.target?.result;
-        const workbook = XLSX.read(fileData, { type: "binary" });
-        const sheetName = workbook.SheetNames[0];
-        const worksheet = workbook.Sheets[sheetName];
-        
-        const jsonData: any[] = XLSX.utils.sheet_to_json(worksheet, {
-            raw: false, // Garante que as datas sejam formatadas
-            defval: null // Define valores padrão para células vazias
-        });
+        const fileContent = e.target?.result;
+        let formattedData: PlateData[] = [];
 
-        if (jsonData.length === 0) {
-            throw new Error("A planilha está vazia ou em um formato não suportado.");
+        if (file.type === 'application/json') {
+          const jsonData = JSON.parse(fileContent as string);
+          formattedData = processData(jsonData, file.name);
+        } else {
+          const workbook = XLSX.read(fileContent, { type: 'binary' });
+          const sheetName = workbook.SheetNames[0];
+          const worksheet = workbook.Sheets[sheetName];
+          const jsonData = XLSX.utils.sheet_to_json(worksheet, {
+            raw: false,
+            defval: null
+          });
+          formattedData = processData(jsonData, file.name);
         }
-
-        const getField = (item: any, possibleKeys: string[]) => {
-            for (const key of possibleKeys) {
-                if (item[key] !== undefined && item[key] !== null) {
-                    return item[key];
-                }
-            }
-            // Se nenhuma das chaves primárias for encontrada, tente uma busca case-insensitive
-            const lowerCaseKeys = possibleKeys.map(k => k.toLowerCase());
-            for (const itemKey in item) {
-                if (lowerCaseKeys.includes(itemKey.toLowerCase())) {
-                    return item[itemKey];
-                }
-            }
-            return null;
-        };
-        
-        const formattedData: PlateData[] = jsonData.map((item, index) => {
-            const imageUrl = getField(item, ["URL da imagem", "Image URL"]);
-            
-            if (!imageUrl) {
-                return null;
-            }
-
-            const trustLevel = getField(item, ["Confiança", "Trust Level", "F"]);
-            const isTrusted = trustLevel ? parseFloat(trustLevel) >= 86 : true;
-
-            const cameraID = getField(item, ["ID da Câmera", "Camera ID", "C"]);
-            let bodyType: 'Carro' | 'Moto' | 'Caminhão' | undefined;
-            let marca: string | undefined;
-            let model: string | undefined;
-
-            if (isTrusted) {
-                const bodyTypeRaw = String(getField(item, ["Carroceria", "Body Type"] || '')).toLowerCase();
-                if (['automovel', 'carro'].includes(bodyTypeRaw)) {
-                    bodyType = 'Carro';
-                } else if (['motocicleta', 'motoneta', 'moto'].includes(bodyTypeRaw)) {
-                    bodyType = 'Moto';
-                } else if (['caminhão', 'caminhao'].includes(bodyTypeRaw)) {
-                    bodyType = 'Caminhão';
-                }
-                marca = getField(item, ["Marca"]);
-                model = getField(item, ["Modelo", "Model"]);
-            }
-
-            const coords = cameraID ? cameraCoordinates.find(c => c.id === cameraID) : undefined;
-          
-            return {
-                id: `${file.name}-${index}`,
-                "Image URL": imageUrl,
-                "License Plate": getField(item, ["Placa", "License Plate"]),
-                "Detected At": getField(item, ["Detectado Em", "Detected At"]),
-                "BodyType": bodyType,
-                "Marca": marca,
-                "Model": model,
-                "CameraID": cameraID,
-                "CameraAddress": getField(item, ["Endereço da Câmera", "Camera Address"]),
-                "lat": coords?.lat,
-                "lng": coords?.lng,
-            }
-        }).filter((item): item is PlateData => item !== null && !!item["Image URL"]);
         
         setData(formattedData);
         setFilter('all');
@@ -207,7 +205,12 @@ export default function PlateGalleryPage() {
         }
       }
     };
-    reader.readAsBinaryString(file);
+    
+    if (file.type === 'application/json') {
+        reader.readAsText(file);
+    } else {
+        reader.readAsBinaryString(file);
+    }
   };
 
   const handleImageClick = (item: PlateData) => {
@@ -700,7 +703,7 @@ export default function PlateGalleryPage() {
           <CollapsibleContent>
              <div className="text-center py-4">
                 <p className="text-muted-foreground mt-2 max-w-2xl mx-auto">
-                    Faça o upload de uma planilha para exibir as imagens a partir de qualquer URL encontrada no arquivo.
+                    Faça o upload de uma planilha ou arquivo JSON para exibir as imagens a partir de qualquer URL encontrada no arquivo.
                 </p>
                 <Card className="max-w-lg mx-auto mt-4">
                   <CardHeader>
@@ -712,7 +715,7 @@ export default function PlateGalleryPage() {
                         type="file"
                         id="file-upload"
                         className="hidden"
-                        accept=".csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel"
+                        accept=".csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel, application/json"
                         onChange={handleFileUpload}
                         disabled={isLoading}
                         aria-describedby="file-upload-help"
@@ -724,10 +727,10 @@ export default function PlateGalleryPage() {
                           ) : (
                             <Upload className="mr-2 h-4 w-4" />
                           )}
-                          {isLoading ? 'Processando...' : 'Selecione um arquivo CSV ou XLSX'}
+                          {isLoading ? 'Processando...' : 'Selecione um arquivo'}
                         </Label>
                       </Button>
-                      <p id="file-upload-help" className="text-xs text-muted-foreground mt-2">Formatos suportados: .csv, .xlsx, .xls</p>
+                      <p id="file-upload-help" className="text-xs text-muted-foreground mt-2">Formatos suportados: .csv, .xlsx, .xls, .json</p>
                     </div>
                   </CardContent>
                 </Card>
@@ -1023,5 +1026,7 @@ export default function PlateGalleryPage() {
     </div>
   );
 }
+
+    
 
     
