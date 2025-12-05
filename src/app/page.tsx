@@ -113,82 +113,75 @@ export default function PlateGalleryPage() {
         const sheetName = workbook.SheetNames[0];
         const worksheet = workbook.Sheets[sheetName];
         
-        const jsonData: any[] = XLSX.utils.sheet_to_json(worksheet, {header: 1});
+        const jsonData: any[] = XLSX.utils.sheet_to_json(worksheet, {
+            raw: false, // Garante que as datas sejam formatadas
+            defval: null // Define valores padrão para células vazias
+        });
 
-        if (jsonData.length < 2) {
-          throw new Error("A planilha está vazia ou contém apenas o cabeçalho.");
+        if (jsonData.length === 0) {
+            throw new Error("A planilha está vazia ou em um formato não suportado.");
         }
 
-        const header: string[] = jsonData[0].map(h => String(h).trim().toLowerCase());
-        const findHeaderIndex = (possibleNames: string[]) => {
-          for (const name of possibleNames) {
-            const index = header.indexOf(name);
-            if (index > -1) {
-              return index;
+        const getField = (item: any, possibleKeys: string[]) => {
+            for (const key of possibleKeys) {
+                if (item[key] !== undefined && item[key] !== null) {
+                    return item[key];
+                }
             }
-          }
-          return -1;
-        }
-
-        let imageUrlIndex = findHeaderIndex(["url da imagem", "image url"]);
-        if (imageUrlIndex === -1) {
-          imageUrlIndex = 0; // Se não encontrar, assume que é a primeira coluna
-          toast({
-            title: "Aviso",
-            description: "Coluna 'URL da imagem' não encontrada. Usando a primeira coluna para as imagens.",
-          });
-        }
-        
-        const licensePlateIndex = findHeaderIndex(["placa", "license plate"]);
-        const detectedAtIndex = findHeaderIndex(["detectado em", "detected at"]);
-        const bodyTypeIndex = findHeaderIndex(["carroceria", "body type"]);
-        const marcaIndex = findHeaderIndex(["marca"]);
-        const modelIndex = findHeaderIndex(["modelo", "model"]);
-        const trustLevelIndex = findHeaderIndex(["confiança", "trust level", "f"]);
-        const cameraIDIndex = findHeaderIndex(["id da câmera", "camera id", "c"]);
-        const cameraAddressIndex = findHeaderIndex(["endereço da câmera", "camera address"]);
-        
-        const rows = jsonData.slice(1);
-        const formattedData: PlateData[] = rows.map((row: any[], index) => {
-          const trustLevel = trustLevelIndex > -1 && row[trustLevelIndex] ? parseFloat(row[trustLevelIndex]) : 100;
-          const isTrusted = trustLevel >= 86;
-          
-          const cameraID = cameraIDIndex > -1 ? String(row[cameraIDIndex] || '') : undefined;
-          let cameraAddress = cameraAddressIndex > -1 ? String(row[cameraAddressIndex] || '') : undefined;
-          
-          let bodyType: 'Carro' | 'Moto' | 'Caminhão' | undefined;
-          let marca = "";
-          let model = "";
-
-          if (isTrusted) {
-            const bodyTypeRaw = bodyTypeIndex > -1 ? String(row[bodyTypeIndex] || '').toLowerCase() : '';
-            if (['automovel', 'carro'].includes(bodyTypeRaw)) {
-              bodyType = 'Carro';
-            } else if (['motocicleta', 'motoneta', 'moto'].includes(bodyTypeRaw)) {
-              bodyType = 'Moto';
-            } else if (['caminhão', 'caminhao'].includes(bodyTypeRaw)) {
-                bodyType = 'Caminhão';
+            // Se nenhuma das chaves primárias for encontrada, tente uma busca case-insensitive
+            const lowerCaseKeys = possibleKeys.map(k => k.toLowerCase());
+            for (const itemKey in item) {
+                if (lowerCaseKeys.includes(itemKey.toLowerCase())) {
+                    return item[itemKey];
+                }
             }
-            marca = marcaIndex > -1 && row[marcaIndex] ? String(row[marcaIndex]).trim() : "";
-            model = modelIndex > -1 && row[modelIndex] ? String(row[modelIndex]).trim() : "";
-          }
+            return null;
+        };
+        
+        const formattedData: PlateData[] = jsonData.map((item, index) => {
+            const imageUrl = getField(item, ["URL da imagem", "Image URL"]);
+            
+            if (!imageUrl) {
+                return null;
+            }
 
-          const coords = cameraID ? cameraCoordinates.find(c => c.id === cameraID) : undefined;
+            const trustLevel = getField(item, ["Confiança", "Trust Level", "F"]);
+            const isTrusted = trustLevel ? parseFloat(trustLevel) >= 86 : true;
+
+            const cameraID = getField(item, ["ID da Câmera", "Camera ID", "C"]);
+            let bodyType: 'Carro' | 'Moto' | 'Caminhão' | undefined;
+            let marca: string | undefined;
+            let model: string | undefined;
+
+            if (isTrusted) {
+                const bodyTypeRaw = String(getField(item, ["Carroceria", "Body Type"] || '')).toLowerCase();
+                if (['automovel', 'carro'].includes(bodyTypeRaw)) {
+                    bodyType = 'Carro';
+                } else if (['motocicleta', 'motoneta', 'moto'].includes(bodyTypeRaw)) {
+                    bodyType = 'Moto';
+                } else if (['caminhão', 'caminhao'].includes(bodyTypeRaw)) {
+                    bodyType = 'Caminhão';
+                }
+                marca = getField(item, ["Marca"]);
+                model = getField(item, ["Modelo", "Model"]);
+            }
+
+            const coords = cameraID ? cameraCoordinates.find(c => c.id === cameraID) : undefined;
           
-          return {
-            id: `${file.name}-${index}`,
-            "Image URL": row[imageUrlIndex],
-            "License Plate": licensePlateIndex > -1 ? row[licensePlateIndex] : undefined,
-            "Detected At": detectedAtIndex > -1 ? row[detectedAtIndex] : undefined,
-            "BodyType": bodyType,
-            "Marca": marca,
-            "Model": model,
-            "CameraID": cameraID,
-            "CameraAddress": cameraAddress,
-            "lat": coords?.lat,
-            "lng": coords?.lng,
-          }
-        }).filter(item => item["Image URL"]);
+            return {
+                id: `${file.name}-${index}`,
+                "Image URL": imageUrl,
+                "License Plate": getField(item, ["Placa", "License Plate"]),
+                "Detected At": getField(item, ["Detectado Em", "Detected At"]),
+                "BodyType": bodyType,
+                "Marca": marca,
+                "Model": model,
+                "CameraID": cameraID,
+                "CameraAddress": getField(item, ["Endereço da Câmera", "Camera Address"]),
+                "lat": coords?.lat,
+                "lng": coords?.lng,
+            }
+        }).filter((item): item is PlateData => item !== null && !!item["Image URL"]);
         
         setData(formattedData);
         setFilter('all');
@@ -1031,3 +1024,4 @@ export default function PlateGalleryPage() {
   );
 }
 
+    
