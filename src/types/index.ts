@@ -9,6 +9,7 @@ export type PlateData = {
   Model?: string;
   BodyType?: 'Carro' | 'Moto' | 'Caminhão';
   Marca?: string;
+  Cor?: string;
   CameraID?: string;
   CameraAddress?: string;
   preloadedImageUrl?: string;
@@ -21,3 +22,4 @@ export type CameraCoordinate = {
   lat: number;
   lng: number;
 };
+

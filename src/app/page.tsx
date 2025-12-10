@@ -35,6 +35,7 @@ import {
   Truck,
   Sun,
   Moon,
+  Palette,
 } from "lucide-react";
 import {
   Collapsible,
@@ -68,6 +69,7 @@ export default function PlateGalleryPage() {
   const [isGeneratingReport, setIsGeneratingReport] = useState(false);
   const [selectedItem, setSelectedItem] = useState<PlateData | null>(null);
   const [filter, setFilter] = useState<'all' | 'Carro' | 'Moto' | 'Caminhão'>('all');
+  const [colorFilter, setColorFilter] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState("");
   const { toast } = useToast();
   const [isHeaderOpen, setIsHeaderOpen] = useState(true);
@@ -124,6 +126,7 @@ export default function PlateGalleryPage() {
       let bodyType: 'Carro' | 'Moto' | 'Caminhão' | undefined;
       let marca: string | undefined;
       let model: string | undefined;
+      let cor: string | undefined;
   
       if (isTrusted) {
         const bodyTypeRaw = String(getField(item, ["Carroceria", "Body Type"]) || '').toLowerCase();
@@ -132,6 +135,7 @@ export default function PlateGalleryPage() {
         else if (['caminhão', 'caminhao'].includes(bodyTypeRaw)) bodyType = 'Caminhão';
         marca = getField(item, ["Marca"]);
         model = getField(item, ["Modelo", "Model"]);
+        cor = getField(item, ["Cor", "Color"]);
       }
   
       const coords = cameraID ? cameraCoordinates.find(c => c.id === cameraID) : undefined;
@@ -142,6 +146,7 @@ export default function PlateGalleryPage() {
         "License Plate": getField(item, ["Placa", "License Plate"]),
         "Detected At": getField(item, ["Detectado Em", "Detected At"]),
         "BodyType": bodyType,
+        "Cor": cor,
         "Marca": marca,
         "Model": model,
         "CameraID": cameraID,
@@ -165,24 +170,26 @@ export default function PlateGalleryPage() {
     reader.onload = (e) => {
       try {
         const fileContent = e.target?.result;
-        let formattedData: PlateData[] = [];
+        let jsonData: any[] = [];
+        const fileName = file.name;
 
         if (file.type === 'application/json') {
-          const jsonData = JSON.parse(fileContent as string);
-          formattedData = processData(jsonData, file.name);
+          jsonData = JSON.parse(fileContent as string);
         } else {
           const workbook = XLSX.read(fileContent, { type: 'binary' });
           const sheetName = workbook.SheetNames[0];
           const worksheet = workbook.Sheets[sheetName];
-          const jsonData = XLSX.utils.sheet_to_json(worksheet, {
-            raw: false,
+          jsonData = XLSX.utils.sheet_to_json(worksheet, {
+            raw: false, 
             defval: null
           });
-          formattedData = processData(jsonData, file.name);
         }
+        
+        const formattedData = processData(jsonData, fileName);
         
         setData(formattedData);
         setFilter('all');
+        setColorFilter('all');
         setSearchQuery('');
         setIsHeaderOpen(false);
         toast({
@@ -543,9 +550,15 @@ export default function PlateGalleryPage() {
     return polygonFilteredData || data;
   }, [data, polygonFilteredData]);
 
+  const availableColors = useMemo(() => {
+    const colors = new Set(data.map(item => item.Cor).filter(Boolean));
+    return ['all', ...Array.from(colors)];
+  }, [data]);
+
   const filteredData = useMemo(() => {
     return currentData.filter(item => {
       const typeFilterMatch = filter === 'all' || item.BodyType === filter;
+      const colorFilterMatch = colorFilter === 'all' || item.Cor === colorFilter;
       
       const normalizedSearch = searchQuery.toLowerCase();
       const searchFilterMatch = !searchQuery || 
@@ -587,9 +600,9 @@ export default function PlateGalleryPage() {
         }
       }
 
-      return typeFilterMatch && searchFilterMatch && timeFilterMatch;
+      return typeFilterMatch && searchFilterMatch && timeFilterMatch && colorFilterMatch;
     });
-  }, [currentData, filter, searchQuery, startTime, endTime]);
+  }, [currentData, filter, searchQuery, startTime, endTime, colorFilter]);
 
   const sortedData = useMemo(() => {
     return [...filteredData].sort((a, b) => 
@@ -780,6 +793,24 @@ export default function PlateGalleryPage() {
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
+                {availableColors.length > 2 && (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="outline" size="sm" className="w-[120px] justify-start capitalize">
+                        <Palette className="mr-2 h-4 w-4" />
+                        {colorFilter === 'all' ? 'Cores' : colorFilter}
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent>
+                      {availableColors.map(color => (
+                        <DropdownMenuItem key={color} onSelect={() => setColorFilter(color as string)} className="capitalize">
+                          {color === 'all' ? <List className="mr-2 h-4 w-4" /> : <div className="mr-2 h-4 w-4 rounded-full border" style={{ backgroundColor: color as string }} />}
+                          {color === 'all' ? 'Todas as cores' : color}
+                        </DropdownMenuItem>
+                      ))}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                )}
             </div>
             <Collapsible className="w-full md:w-auto">
               <CollapsibleTrigger asChild>
@@ -1006,6 +1037,9 @@ export default function PlateGalleryPage() {
                    )}
                    {selectedItem.Model && (
                      <p><span className="font-semibold">Modelo:</span> {selectedItem.Model}</p>
+                   )}
+                   {selectedItem.Cor && (
+                     <p><span className="font-semibold">Cor:</span> {selectedItem.Cor}</p>
                    )}
                    {selectedItem["Detected At"] && (
                       <p><span className="font-semibold">Detectado em:</span> {new Date(selectedItem["Detected At"]).toLocaleString()}</p>
