@@ -36,6 +36,7 @@ import {
   Sun,
   Moon,
   Palette,
+  CalendarIcon,
 } from "lucide-react";
 import {
   Collapsible,
@@ -48,6 +49,10 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
 import JSZip from "jszip";
 import { saveAs } from "file-saver";
 import { Label } from "@/components/ui/label";
@@ -58,6 +63,7 @@ import { logoBase64 } from "@/lib/logo-base64";
 import { pdfLayoutConfig } from "@/lib/pdf-layout";
 import { cameraCoordinates } from '@/lib/camera-coordinates';
 import { TimelineSidebar } from "@/components/timeline/timeline-sidebar";
+import { cn } from "@/lib/utils";
 
 const VehicleMap = dynamic(() => import('@/components/map/vehicle-map'), { ssr: false });
 
@@ -83,6 +89,7 @@ export default function PlateGalleryPage() {
   const [imageErrors, setImageErrors] = useState<Record<string, boolean>>({});
   const [startTime, setStartTime] = useState('');
   const [endTime, setEndTime] = useState('');
+  const [filterDate, setFilterDate] = useState<Date | undefined>(undefined);
   const [isMapOpen, setIsMapOpen] = useState(false);
   const [mapKey, setMapKey] = useState(Date.now());
   const [reportFilename, setReportFilename] = useState("relatorio_lpr");
@@ -114,10 +121,19 @@ export default function PlateGalleryPage() {
       }
       return null;
     };
+
+    const firstItemKeys = Object.keys(jsonData[0] || {});
+    const headerWithUrl = firstItemKeys.find(key => key.toLowerCase().includes('url'));
   
     return jsonData.map((item, index) => {
-      const imageUrl = getField(item, ["URL da imagem", "Image URL"]);
-      if (!imageUrl) return null;
+      let imageUrl = getField(item, ["URL da imagem", "Image URL"]);
+      if (!imageUrl && headerWithUrl) {
+          imageUrl = item[headerWithUrl];
+      } else if (!imageUrl && firstItemKeys.length > 0) {
+          imageUrl = item[firstItemKeys[0]];
+      }
+
+      if (!imageUrl || typeof imageUrl !== 'string' || !imageUrl.startsWith('http')) return null;
   
       const trustLevel = getField(item, ["Confiança", "Trust Level", "F"]);
       const isTrusted = trustLevel ? parseFloat(trustLevel) >= 86 : true;
@@ -600,9 +616,18 @@ export default function PlateGalleryPage() {
         }
       }
 
-      return typeFilterMatch && searchFilterMatch && timeFilterMatch && colorFilterMatch;
+      let dateFilterMatch = true;
+      if (filterDate && item["Detected At"]) {
+        const itemDate = new Date(item["Detected At"]);
+        dateFilterMatch =
+          itemDate.getDate() === filterDate.getDate() &&
+          itemDate.getMonth() === filterDate.getMonth() &&
+          itemDate.getFullYear() === filterDate.getFullYear();
+      }
+
+      return typeFilterMatch && searchFilterMatch && timeFilterMatch && colorFilterMatch && dateFilterMatch;
     });
-  }, [currentData, filter, searchQuery, startTime, endTime, colorFilter]);
+  }, [currentData, filter, searchQuery, startTime, endTime, colorFilter, filterDate]);
 
   const sortedData = useMemo(() => {
     return [...filteredData].sort((a, b) => 
@@ -818,28 +843,57 @@ export default function PlateGalleryPage() {
               </CollapsibleTrigger>
               <CollapsibleContent>
                 <div className="mt-4 md:absolute md:mt-2 md:bg-card md:p-4 md:rounded-lg md:shadow-lg md:border flex flex-col md:flex-row gap-4 items-center">
-                    <div className="flex gap-4 items-center">
-                    <Clock className="w-5 h-5 text-muted-foreground" />
-                    <div className="grid gap-1">
-                        <Label htmlFor="start-time" className="text-xs">Início</Label>
-                        <Input 
-                        id="start-time"
-                        type="time"
-                        value={startTime}
-                        onChange={(e) => setStartTime(e.target.value)}
-                        className="w-32"
-                        />
+                    <div className="flex gap-2 items-center">
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button
+                            variant={"outline"}
+                            size="sm"
+                            className={cn(
+                              "w-[240px] justify-start text-left font-normal",
+                              !filterDate && "text-muted-foreground"
+                            )}
+                          >
+                            <CalendarIcon className="mr-2 h-4 w-4" />
+                            {filterDate ? format(filterDate, "PPP", { locale: ptBR }) : <span>Selecione uma data</span>}
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                          <Calendar
+                            mode="single"
+                            selected={filterDate}
+                            onSelect={setFilterDate}
+                            initialFocus
+                            locale={ptBR}
+                          />
+                        </PopoverContent>
+                      </Popover>
+                      <Button variant="ghost" size="sm" onClick={() => setFilterDate(undefined)} disabled={!filterDate}>
+                        Limpar
+                      </Button>
                     </div>
-                    <div className="grid gap-1">
-                        <Label htmlFor="end-time" className="text-xs">Fim</Label>
-                        <Input 
-                        id="end-time"
-                        type="time"
-                        value={endTime}
-                        onChange={(e) => setEndTime(e.target.value)}
-                        className="w-32"
-                        />
-                    </div>
+                    <div className="flex gap-2 items-center">
+                      <Clock className="w-5 h-5 text-muted-foreground" />
+                      <div className="grid gap-1">
+                          <Label htmlFor="start-time" className="text-xs">Início</Label>
+                          <Input 
+                          id="start-time"
+                          type="time"
+                          value={startTime}
+                          onChange={(e) => setStartTime(e.target.value)}
+                          className="w-24"
+                          />
+                      </div>
+                      <div className="grid gap-1">
+                          <Label htmlFor="end-time" className="text-xs">Fim</Label>
+                          <Input 
+                          id="end-time"
+                          type="time"
+                          value={endTime}
+                          onChange={(e) => setEndTime(e.target.value)}
+                          className="w-24"
+                          />
+                      </div>
                     </div>
                 </div>
               </CollapsibleContent>
@@ -1060,6 +1114,8 @@ export default function PlateGalleryPage() {
     </div>
   );
 }
+
+    
 
     
 
