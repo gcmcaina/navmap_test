@@ -64,6 +64,7 @@ import { pdfLayoutConfig } from "@/lib/pdf-layout";
 import { cameraCoordinates } from '@/lib/camera-coordinates';
 import { TimelineSidebar } from "@/components/timeline/timeline-sidebar";
 import { cn } from "@/lib/utils";
+import type { DateRange } from "react-day-picker";
 
 const VehicleMap = dynamic(() => import('@/components/map/vehicle-map'), { ssr: false });
 
@@ -89,7 +90,7 @@ export default function PlateGalleryPage() {
   const [imageErrors, setImageErrors] = useState<Record<string, boolean>>({});
   const [startTime, setStartTime] = useState('');
   const [endTime, setEndTime] = useState('');
-  const [filterDate, setFilterDate] = useState<Date | undefined>(undefined);
+  const [filterDate, setFilterDate] = useState<DateRange | undefined>(undefined);
   const [isMapOpen, setIsMapOpen] = useState(false);
   const [mapKey, setMapKey] = useState(Date.now());
   const [reportFilename, setReportFilename] = useState("relatorio_lpr");
@@ -619,10 +620,14 @@ export default function PlateGalleryPage() {
       let dateFilterMatch = true;
       if (filterDate && item["Detected At"]) {
         const itemDate = new Date(item["Detected At"]);
-        dateFilterMatch =
-          itemDate.getDate() === filterDate.getDate() &&
-          itemDate.getMonth() === filterDate.getMonth() &&
-          itemDate.getFullYear() === filterDate.getFullYear();
+        if (filterDate.from && filterDate.to) {
+          dateFilterMatch = itemDate >= filterDate.from && itemDate <= filterDate.to;
+        } else if (filterDate.from) {
+          dateFilterMatch =
+            itemDate.getDate() === filterDate.from.getDate() &&
+            itemDate.getMonth() === filterDate.from.getMonth() &&
+            itemDate.getFullYear() === filterDate.from.getFullYear();
+        }
       }
 
       return typeFilterMatch && searchFilterMatch && timeFilterMatch && colorFilterMatch && dateFilterMatch;
@@ -844,26 +849,40 @@ export default function PlateGalleryPage() {
               <CollapsibleContent>
                 <div className="mt-4 md:absolute md:mt-2 md:bg-card md:p-4 md:rounded-lg md:shadow-lg md:border flex flex-col md:flex-row gap-4 items-center">
                     <div className="flex gap-2 items-center">
-                      <Popover>
+                       <Popover>
                         <PopoverTrigger asChild>
                           <Button
+                            id="date"
                             variant={"outline"}
-                            size="sm"
+                             size="sm"
                             className={cn(
-                              "w-[240px] justify-start text-left font-normal",
+                              "w-[260px] justify-start text-left font-normal",
                               !filterDate && "text-muted-foreground"
                             )}
                           >
                             <CalendarIcon className="mr-2 h-4 w-4" />
-                            {filterDate ? format(filterDate, "PPP", { locale: ptBR }) : <span>Selecione uma data</span>}
+                            {filterDate?.from ? (
+                              filterDate.to ? (
+                                <>
+                                  {format(filterDate.from, "LLL dd, y")} -{" "}
+                                  {format(filterDate.to, "LLL dd, y")}
+                                </>
+                              ) : (
+                                format(filterDate.from, "LLL dd, y")
+                              )
+                            ) : (
+                              <span>Selecione um período</span>
+                            )}
                           </Button>
                         </PopoverTrigger>
                         <PopoverContent className="w-auto p-0" align="start">
                           <Calendar
-                            mode="single"
+                            initialFocus
+                            mode="range"
+                            defaultMonth={filterDate?.from}
                             selected={filterDate}
                             onSelect={setFilterDate}
-                            initialFocus
+                            numberOfMonths={2}
                             locale={ptBR}
                           />
                         </PopoverContent>
