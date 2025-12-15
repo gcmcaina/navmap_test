@@ -746,7 +746,7 @@ export default function PlateGalleryPage() {
           <CollapsibleContent>
              <div className="text-center py-4">
                 <p className="text-muted-foreground mt-2 max-w-2xl mx-auto">
-                    Faça o upload de uma planilha ou arquivo JSON para exibir as imagens a partir de qualquer URL encontrada no arquivo.
+                    Faça o upload da planilha para visualizar as informações.
                 </p>
                 <Card className="max-w-lg mx-auto mt-4">
                   <CardHeader>
