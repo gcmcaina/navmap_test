@@ -29,6 +29,7 @@ function getErrorMessage(error: unknown): string {
         return 'A senha é muito fraca. Tente uma mais forte.';
       case 'auth/user-not-found':
       case 'auth/wrong-password':
+        return 'Email ou senha inválidos.';
       case 'auth/invalid-credential':
         return 'Email ou senha inválidos.';
       default:
