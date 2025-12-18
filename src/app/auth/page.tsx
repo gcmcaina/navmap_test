@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
@@ -14,6 +14,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Loader2, LogIn, UserPlus, Eye, EyeOff } from 'lucide-react';
 import { signUp, signIn } from './actions';
 import { useRouter } from 'next/navigation';
+import { useAuth } from '@/hooks/use-auth';
 
 export const signUpSchema = z.object({
   email: z.string().email({ message: 'Por favor, insira um email válido.' }),
@@ -32,6 +33,14 @@ export default function AuthPage() {
   const [authType, setAuthType] = useState<'signin' | 'signup'>('signin');
   const { toast } = useToast();
   const router = useRouter();
+  const { user, loading } = useAuth();
+
+  useEffect(() => {
+    if (!loading && user) {
+      router.push('/');
+    }
+  }, [user, loading, router]);
+
 
   const signInForm = useForm<SignInForm>({
     resolver: zodResolver(signInSchema),
@@ -91,6 +100,15 @@ export default function AuthPage() {
     visible: { opacity: 1, x: 0 },
     exit: { opacity: 0, x: -50 },
   };
+
+  if (loading || (!loading && user)) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center bg-background">
+        <Loader2 className="h-12 w-12 animate-spin text-primary" />
+        <p className="mt-4 text-muted-foreground">Carregando...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="flex min-h-screen w-full items-center justify-center bg-background p-4 font-body">
