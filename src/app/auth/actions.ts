@@ -4,7 +4,6 @@
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 import type { z } from 'zod';
-import { cookies } from 'next/headers';
 import { signInSchema, signUpSchema } from './page';
 
 function getErrorMessage(error: unknown): string {
@@ -39,16 +38,7 @@ export async function signUp(data: z.infer<typeof signUpSchema>) {
 
 export async function signIn(data: z.infer<typeof signInSchema>) {
   try {
-    const userCredential = await signInWithEmailAndPassword(auth, data.email, data.password);
-    const idToken = await userCredential.user.getIdToken();
-
-    cookies().set('firebaseIdToken', idToken, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        path: '/',
-        maxAge: 60 * 60 * 24 * 7 // 1 semana
-    });
-
+    await signInWithEmailAndPassword(auth, data.email, data.password);
     return { success: true };
   } catch (error) {
     return { error: getErrorMessage(error) };
@@ -58,7 +48,6 @@ export async function signIn(data: z.infer<typeof signInSchema>) {
 export async function handleSignOut() {
     try {
         await signOut(auth);
-        cookies().delete('firebaseIdToken');
         return { success: true };
     } catch (error) {
         return { error: getErrorMessage(error) };
