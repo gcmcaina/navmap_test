@@ -67,6 +67,9 @@ import { TimelineSidebar } from "@/components/timeline/timeline-sidebar";
 import { cn } from "@/lib/utils";
 import type { DateRange } from "react-day-picker";
 import { useAuth } from "@/hooks/use-auth";
+import { mercosulPlateBase64 } from "@/lib/mercosul-base64";
+import { feFontBase64 } from "@/lib/fe-font-base64";
+
 
 const VehicleMap = dynamic(() => import('@/components/map/vehicle-map'), { ssr: false });
 
@@ -365,7 +368,7 @@ export default function LPRPage() {
         unit: pdfLayoutConfig.unit,
         format: pdfLayoutConfig.format,
       });
-      
+
       const {
         margin,
         pageWidth,
@@ -378,35 +381,31 @@ export default function LPRPage() {
         lineHeight,
         image,
       } = pdfLayoutConfig;
-      let yPosition = margin + 15;
-
+      let yPosition = margin;
 
       const addBackground = () => {
         if (logoBase64 && !logoBase64.startsWith('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=')) {
-            const logoWidth = image.width;
-            const logoHeight = image.height;
-            const x = (pageWidth - logoWidth) / 2;
-            const y = (pageHeight - logoHeight) / 2;
-
-            doc.saveGraphicsState();
-            doc.setGState(new (doc as any).GState({opacity: image.opacity}));
-            
-            doc.addImage(logoBase64, 'PNG', x, y, logoWidth, logoHeight, undefined, 'FAST');
-            
-            doc.restoreGraphicsState();
+          const logoWidth = image.width;
+          const logoHeight = image.height;
+          const x = (pageWidth - logoWidth) / 2;
+          const y = (pageHeight - logoHeight) / 2;
+          doc.saveGraphicsState();
+          doc.setGState(new (doc as any).GState({ opacity: image.opacity }));
+          doc.addImage(logoBase64, 'PNG', x, y, logoWidth, logoHeight, undefined, 'FAST');
+          doc.restoreGraphicsState();
         }
       }
 
       const addHeader = (pageNum: number) => {
         doc.setFontSize(titleSize);
         doc.setFont(font.name, 'bold');
-        doc.text("Relatório de Veículos", margin, margin);
-        
+        doc.text("Relatório de Veículos", margin, yPosition);
+
         doc.setFontSize(headerSize);
         doc.setFont(font.name, 'normal');
         const headerText = `Gerado em: ${new Date().toLocaleString('pt-BR')} | Página ${pageNum}`;
-        doc.text(headerText, pageWidth - margin, margin, { align: 'right' });
-        yPosition = margin + 20;
+        doc.text(headerText, pageWidth - margin, yPosition, { align: 'right' });
+        yPosition += 20;
       }
       
       const checkNewPage = (neededHeight: number) => {
@@ -414,6 +413,7 @@ export default function LPRPage() {
           doc.addPage();
           addBackground();
           addHeader(doc.internal.pages.length);
+          yPosition = margin + 20;
           return true;
         }
         return false;
@@ -425,7 +425,7 @@ export default function LPRPage() {
         doc.text(item["License Plate"] || 'N/A', x, textY);
         textY += lineHeight.large;
         
-        doc.setFont(font.name, 'normal')
+        doc.setFont(font.name, 'normal');
         doc.setFontSize(smallSize);
         if (item.Marca && item.Marca !== "Marca não Informada") {
             doc.text(`Veículo: ${item.Marca} ${item.Model || ''}`, x, textY);
@@ -441,7 +441,6 @@ export default function LPRPage() {
           doc.text(locationLines, x, textY);
           textY += (locationLines.length * lineHeight.small);
         }
-
         return textY;
       }
       
@@ -449,12 +448,77 @@ export default function LPRPage() {
       addBackground();
       addHeader(pageNum);
 
-      for (let i = 0; i < availableData.length; i++) {
-        const item = availableData[i];
-        const itemHeight = 75;
-        checkNewPage(itemHeight);
+      // Special layout for a single plate
+      if (availableData.length === 1) {
+        const item = availableData[0];
+        const plate = item["License Plate"] || "N/A";
 
-        const textX = margin + 90;
+        // Add Mercosul Plate background
+        if (mercosulPlateBase64.length > 100) { // Check if it's not the placeholder
+          const plateImgWidth = 100;
+          const plateImgHeight = 30;
+          const plateX = (pageWidth - plateImgWidth) / 2;
+          doc.addImage(mercosulPlateBase64, 'PNG', plateX, yPosition, plateImgWidth, plateImgHeight);
+          yPosition += plateImgHeight;
+
+          // Add custom font and plate text
+          if (feFontBase64) {
+            doc.addFileToVFS('fe-font.ttf', feFontBase64);
+            doc.addFont('fe-font.ttf', 'FE-Font', 'normal');
+            doc.setFont('FE-Font');
+          } else {
+             doc.setFont('Courier', 'bold');
+          }
+          doc.setFontSize(28);
+          doc.setTextColor(0, 0, 0);
+          doc.text(plate, pageWidth / 2, yPosition - 13, { align: 'center' });
+        }
+        
+        yPosition += 10;
+        doc.setFont(font.name, 'normal');
+        checkNewPage(110);
+
+        // Add vehicle image
+        try {
+          const response = await fetch(item['Image URL']);
+          if (!response.ok) throw new Error('Falha ao buscar imagem.');
+          const blob = await response.blob();
+          const dataUrl = await new Promise<string>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result as string);
+            reader.onerror = reject;
+            reader.readAsDataURL(blob);
+          });
+
+          const img = new (window as any).Image();
+          img.src = dataUrl;
+          await new Promise(resolve => { img.onload = resolve; });
+
+          const imgMaxHeight = 100;
+          const aspectRatio = img.width / img.height;
+          const imgWidth = imgMaxHeight * aspectRatio;
+          const imgX = (pageWidth - imgWidth) / 2;
+          
+          doc.addImage(dataUrl, 'JPEG', imgX, yPosition, imgWidth, imgMaxHeight);
+          yPosition += imgMaxHeight + 10;
+        } catch (e) {
+          console.error(`Falha ao carregar imagem para o relatório: ${item['Image URL']}`, e);
+          doc.setFontSize(smallSize).setFont(font.name, 'italic');
+          doc.text('Imagem indisponível', pageWidth / 2, yPosition + 50, {align: 'center'});
+          yPosition += 110;
+        }
+
+        // Add text info below the image
+        checkNewPage(50);
+        addTextInfo(item, margin, yPosition);
+
+      } else { // Default layout for multiple plates
+        for (let i = 0; i < availableData.length; i++) {
+          const item = availableData[i];
+          const itemHeight = 75;
+          checkNewPage(itemHeight);
+
+          const textX = margin + 90;
 
           try {
             const response = await fetch(item['Image URL']);
@@ -498,16 +562,17 @@ export default function LPRPage() {
             doc.textWithLink('Ver Imagem', textX, textY, { url: item['Image URL'] });
             doc.setTextColor(0, 0, 0);
           }
-       
-        yPosition += itemHeight;
-        if(i < availableData.length -1) {
-          checkNewPage(2);
-          doc.setDrawColor(200, 200, 200);
-          doc.line(margin, yPosition - 5, pageWidth - margin, yPosition - 5);
+        
+          yPosition += itemHeight;
+          if(i < availableData.length -1) {
+            checkNewPage(2);
+            doc.setDrawColor(200, 200, 200);
+            doc.line(margin, yPosition - 5, pageWidth - margin, yPosition - 5);
+          }
         }
       }
 
-      if (unavailableData.length > 0) {
+      if (unavailableData.length > 0 && availableData.length !== 1) {
         checkNewPage(20);
         yPosition += 10;
         doc.setFontSize(headerSize).setFont(font.name, 'bold');
@@ -1143,3 +1208,5 @@ export default function LPRPage() {
     </div>
   );
 }
+
+    
