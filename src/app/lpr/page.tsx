@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useMemo, useRef, useEffect } from "react";
@@ -36,7 +37,6 @@ import {
   Moon,
   Palette,
   CalendarIcon,
-  LogOut,
 } from "lucide-react";
 import {
   Collapsible,
@@ -65,18 +65,11 @@ import { cameraCoordinates } from '@/lib/camera-coordinates';
 import { TimelineSidebar } from "@/components/timeline/timeline-sidebar";
 import { cn } from "@/lib/utils";
 import type { DateRange } from "react-day-picker";
-import { handleSignOut } from '@/app/auth/actions';
-import { useRouter } from "next/navigation";
-import { useAuth } from "@/hooks/use-auth";
-
 
 const VehicleMap = dynamic(() => import('@/components/map/vehicle-map'), { ssr: false });
 
 
 export default function LPRPage() {
-  const { user } = useAuth();
-  const router = useRouter();
-
   const [data, setData] = useState<PlateData[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
@@ -104,11 +97,6 @@ export default function LPRPage() {
   const [polygonFilteredData, setPolygonFilteredData] = useState<PlateData[] | null>(null);
   const [isTimelineOpen, setIsTimelineOpen] = useState(false);
   const [hoveredDate, setHoveredDate] = useState<string | null>(null);
-
-  const onSignOut = async () => {
-    await handleSignOut();
-    router.replace('/auth');
-  };
 
 
   useEffect(() => {
@@ -755,10 +743,6 @@ export default function LPRPage() {
                 <Button onClick={toggleTheme} variant="outline" size="icon">
                 {theme === 'dark' ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
                 <span className="sr-only">Alternar tema</span>
-                </Button>
-                <Button onClick={onSignOut} variant="outline" size="icon">
-                    <LogOut className="h-5 w-5" />
-                    <span className="sr-only">Sair</span>
                 </Button>
             </div>
           </div>
