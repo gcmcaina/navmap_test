@@ -8,14 +8,13 @@ let basePath = ''
 if (isGithubActions) {
   // Use 'tools' as the repository name for GitHub Pages
   const repo = 'tools'
-  assetPrefix = `/${repo}`
+  assetPrefix = `/${repo}/`
   basePath = `/${repo}`
 }
 
 
 const nextConfig: NextConfig = {
   /* config options here */
-  output: 'export',
   assetPrefix: assetPrefix,
   basePath: basePath,
   typescript: {
