@@ -8,7 +8,8 @@ import { signInSchema, signUpSchema } from './page';
 
 function getErrorMessage(error: unknown): string {
   if (error instanceof Error) {
-    switch ((error as any).code) {
+    const errorCode = (error as any).code;
+    switch (errorCode) {
       case 'auth/email-already-in-use':
         return 'Este email já está em uso.';
       case 'auth/invalid-email':
@@ -20,7 +21,9 @@ function getErrorMessage(error: unknown): string {
       case 'auth/invalid-credential':
         return 'Email ou senha inválidos.';
       default:
-        return 'Ocorreu um erro desconhecido. Tente novamente.';
+        // Se o código de erro não for reconhecido, retorne a mensagem de erro original
+        // ou a mensagem padrão se não houver uma.
+        return error.message || 'Ocorreu um erro desconhecido. Tente novamente.';
     }
   }
   return 'Ocorreu um erro inesperado.';
