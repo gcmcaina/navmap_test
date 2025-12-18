@@ -1,13 +1,11 @@
 
 'use server';
 
-import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } from 'firebase/auth';
-import { firebaseApp } from '@/lib/firebase';
+import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } from 'firebase/auth';
+import { auth } from '@/lib/firebase';
 import type { z } from 'zod';
 import { cookies } from 'next/headers';
 import { signInSchema, signUpSchema } from './page';
-
-const auth = getAuth(firebaseApp);
 
 function getErrorMessage(error: unknown): string {
   if (error instanceof Error) {
