@@ -70,7 +70,7 @@ export default function AuthPage() {
         title: 'Login bem-sucedido!',
         description: 'Redirecionando...',
       });
-      // O AuthGuard cuidará do redirecionamento
+      // O useEffect cuidará do redirecionamento
     }
     setIsSignInLoading(false);
   };
@@ -101,7 +101,9 @@ export default function AuthPage() {
     exit: { opacity: 0, x: -50 },
   };
 
-  if (loading || (!loading && user)) {
+  // Mostra a tela de carregamento enquanto o estado de auth é verificado
+  // ou se o usuário já está logado e aguardando redirecionamento.
+  if (loading || user) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center bg-background">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
