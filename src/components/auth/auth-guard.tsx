@@ -15,13 +15,11 @@ export function AuthGuard({ children }: AuthGuardProps) {
   const router = useRouter();
 
   useEffect(() => {
-    // Apenas redireciona se o carregamento terminou e não há usuário.
     if (!loading && !user) {
       router.push('/auth');
     }
   }, [user, loading, router]);
 
-  // Enquanto o estado de autenticação está sendo verificado, exibe um spinner.
   if (loading) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center bg-background">
@@ -31,17 +29,14 @@ export function AuthGuard({ children }: AuthGuardProps) {
     );
   }
 
-  // Se o carregamento terminou e temos um usuário, renderiza o conteúdo protegido.
   if (!loading && user) {
     return <>{children}</>;
   }
 
-  // Se o carregamento terminou e não há usuário, o useEffect cuidará do redirecionamento.
-  // Retornar um loader aqui também previne "flashes" de conteúdo e garante que o redirecionamento ocorra.
   return (
-      <div className="flex min-h-screen flex-col items-center justify-center bg-background">
-        <Loader2 className="h-12 w-12 animate-spin text-primary" />
-        <p className="mt-4 text-muted-foreground">Redirecionando...</p>
-      </div>
+    <div className="flex min-h-screen flex-col items-center justify-center bg-background">
+      <Loader2 className="h-12 w-12 animate-spin text-primary" />
+      <p className="mt-4 text-muted-foreground">Redirecionando...</p>
+    </div>
   );
 }

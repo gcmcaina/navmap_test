@@ -101,13 +101,11 @@ export default function AuthPage() {
     exit: { opacity: 0, x: -50 },
   };
 
-  // Mostra a tela de carregamento enquanto o estado de auth é verificado
-  // ou se o usuário já está logado e aguardando redirecionamento.
   if (loading || user) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center bg-background">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
-        <p className="mt-4 text-muted-foreground">Carregando...</p>
+        <p className="mt-4 text-muted-foreground">{ loading ? 'Carregando...' : 'Redirecionando...' }</p>
       </div>
     );
   }
