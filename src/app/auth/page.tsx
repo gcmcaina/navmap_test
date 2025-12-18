@@ -37,7 +37,7 @@ export default function AuthPage() {
 
   useEffect(() => {
     if (!loading && user) {
-      router.push('/');
+      router.replace('/');
     }
   }, [user, loading, router]);
 

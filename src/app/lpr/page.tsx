@@ -74,7 +74,7 @@ const VehicleMap = dynamic(() => import('@/components/map/vehicle-map'), { ssr: 
 
 
 export default function LPRPage() {
-  const { user, loading } = useAuth();
+  const { user } = useAuth();
   const router = useRouter();
 
   const [data, setData] = useState<PlateData[]>([]);
@@ -105,16 +105,9 @@ export default function LPRPage() {
   const [isTimelineOpen, setIsTimelineOpen] = useState(false);
   const [hoveredDate, setHoveredDate] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (!loading && !user) {
-      router.push('/auth');
-    }
-  }, [user, loading, router]);
-
-
   const onSignOut = async () => {
     await handleSignOut();
-    router.push('/auth');
+    router.replace('/auth');
   };
 
 
@@ -741,25 +734,6 @@ export default function LPRPage() {
       })}
     </div>
   );
-
-  if (loading) {
-    return (
-      <div className="flex min-h-screen flex-col items-center justify-center bg-background">
-        <Loader2 className="h-12 w-12 animate-spin text-primary" />
-        <p className="mt-4 text-muted-foreground">Verificando autenticação...</p>
-      </div>
-    );
-  }
-
-  if (!user) {
-    // O useEffect cuidará do redirecionamento
-    return (
-      <div className="flex min-h-screen flex-col items-center justify-center bg-background">
-        <Loader2 className="h-12 w-12 animate-spin text-primary" />
-        <p className="mt-4 text-muted-foreground">Redirecionando para o login...</p>
-      </div>
-    );
-  }
   
   return (
     <div className="min-h-screen bg-background text-foreground">
