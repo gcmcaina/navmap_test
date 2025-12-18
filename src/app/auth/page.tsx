@@ -61,7 +61,7 @@ export default function AuthPage() {
         title: 'Login bem-sucedido!',
         description: 'Redirecionando...',
       });
-      router.push('/');
+      // O AuthGuard cuidará do redirecionamento
     }
     setIsSignInLoading(false);
   };
