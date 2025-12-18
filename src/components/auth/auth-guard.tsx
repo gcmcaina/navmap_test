@@ -22,7 +22,6 @@ export function AuthGuard({ children }: AuthGuardProps) {
   }, [user, loading, router]);
 
   // Enquanto o estado de autenticação está sendo verificado, exibe um spinner.
-  // Isso previne o redirecionamento prematuro e o loop.
   if (loading) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center bg-background">
@@ -38,6 +37,11 @@ export function AuthGuard({ children }: AuthGuardProps) {
   }
 
   // Se o carregamento terminou e não há usuário, o useEffect cuidará do redirecionamento.
-  // Retornar null aqui é seguro porque o useEffect já terá sido disparado.
-  return null;
+  // Retornar um loader aqui também previne "flashes" de conteúdo.
+  return (
+      <div className="flex min-h-screen flex-col items-center justify-center bg-background">
+        <Loader2 className="h-12 w-12 animate-spin text-primary" />
+        <p className="mt-4 text-muted-foreground">Redirecionando...</p>
+      </div>
+  );
 }
