@@ -15,12 +15,12 @@ import { Loader2, LogIn, UserPlus, Eye, EyeOff } from 'lucide-react';
 import { signUp, signIn } from './actions';
 import { useRouter } from 'next/navigation';
 
-const signUpSchema = z.object({
+export const signUpSchema = z.object({
   email: z.string().email({ message: 'Por favor, insira um email válido.' }),
   password: z.string().min(6, { message: 'A senha deve ter no mínimo 6 caracteres.' }),
 });
 
-const signInSchema = z.object({
+export const signInSchema = z.object({
   email: z.string().email({ message: 'Por favor, insira um email válido.' }),
   password: z.string().min(1, { message: 'A senha é obrigatória.' }),
 });
@@ -81,6 +81,7 @@ export default function AuthPage() {
         description: 'Faça login para continuar.',
       });
       setAuthType('signin');
+      signUpForm.reset();
     }
     setIsSignUpLoading(false);
   };

@@ -3,20 +3,11 @@
 
 import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } from 'firebase/auth';
 import { firebaseApp } from '@/lib/firebase';
-import { z } from 'zod';
+import type { z } from 'zod';
 import { cookies } from 'next/headers';
+import { signInSchema, signUpSchema } from './page';
 
 const auth = getAuth(firebaseApp);
-
-const signUpSchema = z.object({
-  email: z.string().email(),
-  password: z.string().min(6),
-});
-
-const signInSchema = z.object({
-  email: z.string().email(),
-  password: z.string().min(1),
-});
 
 function getErrorMessage(error: unknown): string {
   if (error instanceof Error) {
@@ -29,7 +20,6 @@ function getErrorMessage(error: unknown): string {
         return 'A senha é muito fraca. Tente uma mais forte.';
       case 'auth/user-not-found':
       case 'auth/wrong-password':
-        return 'Email ou senha inválidos.';
       case 'auth/invalid-credential':
         return 'Email ou senha inválidos.';
       default:
@@ -42,8 +32,7 @@ function getErrorMessage(error: unknown): string {
 
 export async function signUp(data: z.infer<typeof signUpSchema>) {
   try {
-    const validatedData = signUpSchema.parse(data);
-    await createUserWithEmailAndPassword(auth, validatedData.email, validatedData.password);
+    await createUserWithEmailAndPassword(auth, data.email, data.password);
     return { success: true };
   } catch (error) {
     return { error: getErrorMessage(error) };
@@ -52,8 +41,7 @@ export async function signUp(data: z.infer<typeof signUpSchema>) {
 
 export async function signIn(data: z.infer<typeof signInSchema>) {
   try {
-    const validatedData = signInSchema.parse(data);
-    const userCredential = await signInWithEmailAndPassword(auth, validatedData.email, validatedData.password);
+    const userCredential = await signInWithEmailAndPassword(auth, data.email, data.password);
     const idToken = await userCredential.user.getIdToken();
 
     cookies().set('firebaseIdToken', idToken, {
