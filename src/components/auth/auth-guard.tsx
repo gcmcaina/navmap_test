@@ -37,7 +37,7 @@ export function AuthGuard({ children }: AuthGuardProps) {
   }
 
   // Se o carregamento terminou e não há usuário, o useEffect cuidará do redirecionamento.
-  // Retornar um loader aqui também previne "flashes" de conteúdo.
+  // Retornar um loader aqui também previne "flashes" de conteúdo e garante que o redirecionamento ocorra.
   return (
       <div className="flex min-h-screen flex-col items-center justify-center bg-background">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />

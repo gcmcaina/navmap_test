@@ -8,24 +8,25 @@ import { signInSchema, signUpSchema } from './page';
 
 function getErrorMessage(error: unknown): string {
   if (error instanceof Error) {
+    // A propriedade 'code' é específica para erros do Firebase Auth
     const errorCode = (error as any).code;
     switch (errorCode) {
       case 'auth/email-already-in-use':
-        return 'Este email já está em uso.';
+        return 'Este email já está em uso por outra conta.';
       case 'auth/invalid-email':
         return 'O formato do email é inválido.';
       case 'auth/weak-password':
-        return 'A senha é muito fraca. Tente uma mais forte.';
+        return 'A senha é muito fraca. Tente uma com pelo menos 6 caracteres.';
       case 'auth/user-not-found':
       case 'auth/wrong-password':
       case 'auth/invalid-credential':
-        return 'Email ou senha inválidos.';
+        return 'Email ou senha inválidos. Verifique suas credenciais.';
       default:
-        // Retorna a mensagem de erro original se não for um código conhecido.
+        // Para outros erros do Firebase ou erros genéricos, retorna a mensagem original.
         return error.message || 'Ocorreu um erro desconhecido. Tente novamente.';
     }
   }
-  return 'Ocorreu um erro inesperado.';
+  return 'Ocorreu um erro inesperado durante a autenticação.';
 }
 
 
