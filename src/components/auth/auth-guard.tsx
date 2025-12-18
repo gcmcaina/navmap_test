@@ -30,8 +30,11 @@ export function AuthGuard({ children }: AuthGuardProps) {
   }
 
   if (!user) {
-    return null; // ou uma tela de acesso negado, mas o useEffect já irá redirecionar
+    // Retorna null para evitar renderizar a página protegida
+    // enquanto o useEffect redireciona. Isso evita o loop.
+    return null;
   }
 
+  // Se o usuário existir, renderiza a página protegida.
   return <>{children}</>;
 }
