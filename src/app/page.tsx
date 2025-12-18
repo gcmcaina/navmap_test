@@ -4,13 +4,21 @@
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Loader2 } from 'lucide-react';
+import { useAuth } from '@/hooks/use-auth';
 
 export default function HomePage() {
   const router = useRouter();
+  const { isAuthenticated, isLoading } = useAuth();
 
   useEffect(() => {
-    router.replace('/lpr');
-  }, [router]);
+    if (!isLoading) {
+      if (isAuthenticated) {
+        router.replace('/lpr');
+      } else {
+        router.replace('/auth');
+      }
+    }
+  }, [isLoading, isAuthenticated, router]);
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-background">
