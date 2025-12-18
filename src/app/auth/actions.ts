@@ -8,6 +8,8 @@ import { signInSchema, signUpSchema } from './page';
 
 function getErrorMessage(error: unknown): string {
   if (error instanceof Error) {
+    // A mensagem de erro do Firebase SDK geralmente está na propriedade 'message'.
+    // Esta abordagem é mais robusta do que depender da propriedade 'code'.
     const errorCode = (error as any).code;
     switch (errorCode) {
       case 'auth/email-already-in-use':
@@ -21,8 +23,8 @@ function getErrorMessage(error: unknown): string {
       case 'auth/invalid-credential':
         return 'Email ou senha inválidos.';
       default:
-        // Se o código de erro não for reconhecido, retorne a mensagem de erro original
-        // ou a mensagem padrão se não houver uma.
+        // Retorna a mensagem de erro original se não for um código conhecido.
+        // Isso nos dará o erro real, como "API key not valid".
         return error.message || 'Ocorreu um erro desconhecido. Tente novamente.';
     }
   }
