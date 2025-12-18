@@ -15,11 +15,13 @@ export function AuthGuard({ children }: AuthGuardProps) {
   const router = useRouter();
 
   useEffect(() => {
+    // Only redirect if loading is finished and there's no user.
     if (!loading && !user) {
       router.push('/auth');
     }
   }, [user, loading, router]);
 
+  // While loading, show a spinner. This prevents the redirect loop.
   if (loading) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center bg-background">
@@ -29,12 +31,12 @@ export function AuthGuard({ children }: AuthGuardProps) {
     );
   }
 
-  if (!user) {
-    // Retorna null para evitar renderizar a página protegida
-    // enquanto o useEffect redireciona. Isso evita o loop.
-    return null;
+  // If loading is finished and we have a user, render the children.
+  if (user) {
+    return <>{children}</>;
   }
 
-  // Se o usuário existir, renderiza a página protegida.
-  return <>{children}</>;
+  // If loading is finished and there's no user, the useEffect will handle the redirect.
+  // Returning null here prevents rendering children while the redirect is in progress.
+  return null;
 }
