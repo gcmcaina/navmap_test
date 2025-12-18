@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useMemo, useRef, useEffect } from "react";
@@ -68,12 +67,16 @@ import { cn } from "@/lib/utils";
 import type { DateRange } from "react-day-picker";
 import { handleSignOut } from '@/app/auth/actions';
 import { useRouter } from "next/navigation";
+import { useAuth } from "@/hooks/use-auth";
 
 
 const VehicleMap = dynamic(() => import('@/components/map/vehicle-map'), { ssr: false });
 
 
 export default function LPRPage() {
+  const { user, loading } = useAuth();
+  const router = useRouter();
+
   const [data, setData] = useState<PlateData[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
@@ -101,7 +104,12 @@ export default function LPRPage() {
   const [polygonFilteredData, setPolygonFilteredData] = useState<PlateData[] | null>(null);
   const [isTimelineOpen, setIsTimelineOpen] = useState(false);
   const [hoveredDate, setHoveredDate] = useState<string | null>(null);
-  const router = useRouter();
+
+  useEffect(() => {
+    if (!loading && !user) {
+      router.push('/auth');
+    }
+  }, [user, loading, router]);
 
 
   const onSignOut = async () => {
@@ -733,6 +741,25 @@ export default function LPRPage() {
       })}
     </div>
   );
+
+  if (loading) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center bg-background">
+        <Loader2 className="h-12 w-12 animate-spin text-primary" />
+        <p className="mt-4 text-muted-foreground">Carregando...</p>
+      </div>
+    );
+  }
+
+  if (!user) {
+    // A lógica do useEffect cuidará do redirecionamento
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center bg-background">
+        <Loader2 className="h-12 w-12 animate-spin text-primary" />
+        <p className="mt-4 text-muted-foreground">Redirecionando...</p>
+      </div>
+    );
+  }
   
   return (
     <div className="min-h-screen bg-background text-foreground">
