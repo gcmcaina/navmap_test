@@ -26,7 +26,7 @@ import {
   FileArchive,
   Clock,
   ChevronDown,
-  Map,
+  Map as MapIcon,
   FileText,
   ImageIcon,
   ImageOff,
@@ -1071,7 +1071,7 @@ export default function LPRPage() {
                 variant="outline"
                 size="sm"
                 >
-                <Map className="mr-2 h-4 w-4" />
+                <MapIcon className="mr-2 h-4 w-4" />
                 Ver no Mapa
               </Button>
               <Button variant="outline" size="sm" onClick={() => setIsTimelineOpen(!isTimelineOpen)}>
@@ -1249,5 +1249,7 @@ export default function LPRPage() {
     </div>
   );
 }
+
+    
 
     
