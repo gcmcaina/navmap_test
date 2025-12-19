@@ -445,8 +445,7 @@ export default function LPRPage() {
         if (yPosition + neededHeight > pageHeight - margin) {
           doc.addPage();
           addBackground();
-          addHeader(doc.internal.pages.length);
-          yPosition = margin + 20;
+          yPosition = margin; // Reset position, header not added here
           return true;
         }
         return false;
@@ -1253,3 +1252,4 @@ export default function LPRPage() {
     
 
     
+
