@@ -72,7 +72,7 @@ export default function AuthPage() {
                   <Input
                     id="username"
                     type="text"
-                    placeholder="admin"
+                    placeholder="Login"
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
                     required
@@ -87,7 +87,7 @@ export default function AuthPage() {
                   <Input
                     id="password"
                     type="password"
-                    placeholder="admin"
+                    placeholder="Senha"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     required
