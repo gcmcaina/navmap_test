@@ -819,7 +819,7 @@ export default function LPRPage() {
                   </div>
                 )}
                 {item["Detected At"] && (
-                  <div className="flex items-center gap-2 text-sm font-semibold text-primary/90 pt-1">
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground pt-1">
                      <Clock className="w-3.5 h-3.5" />
                      <p>{new Date(item["Detected At"]).toLocaleString('pt-BR')}</p>
                   </div>
