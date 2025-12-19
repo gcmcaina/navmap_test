@@ -38,6 +38,7 @@ import {
   Palette,
   CalendarIcon,
   LogOut,
+  MapPin,
 } from "lucide-react";
 import {
   Collapsible,
@@ -129,18 +130,18 @@ export default function LPRPage() {
       }
       return null;
     };
-
+  
     const firstItemKeys = Object.keys(jsonData[0] || {});
     const headerWithUrl = firstItemKeys.find(key => key.toLowerCase().includes('url'));
   
-    return jsonData.map((item, index) => {
+    let processed = jsonData.map((item, index) => {
       let imageUrl = getField(item, ["URL da imagem", "Image URL"]);
       if (!imageUrl && headerWithUrl) {
           imageUrl = item[headerWithUrl];
       } else if (!imageUrl && firstItemKeys.length > 0) {
           imageUrl = item[firstItemKeys[0]];
       }
-
+  
       if (!imageUrl || typeof imageUrl !== 'string' || !imageUrl.startsWith('http')) return null;
   
       const trustLevel = getField(item, ["Confiança", "Trust Level", "F"]);
@@ -180,6 +181,37 @@ export default function LPRPage() {
         "lng": coords?.lng,
       };
     }).filter((item): item is PlateData => item !== null && !!item["Image URL"]);
+  
+    // Second pass to fill in missing data
+    const plateDataMap = new Map<string, { Marca?: string; Model?: string }>();
+  
+    // First, find the best data for each plate
+    processed.forEach(item => {
+      const plate = item['License Plate'];
+      if (plate) {
+        if (!plateDataMap.has(plate) || (!plateDataMap.get(plate)?.Marca && item.Marca)) {
+          plateDataMap.set(plate, { Marca: item.Marca, Model: item.Model });
+        }
+      }
+    });
+  
+    // Then, apply the found data to items with missing info
+    processed = processed.map(item => {
+      const plate = item['License Plate'];
+      if (plate && (!item.Marca || !item.Model)) {
+        const knownData = plateDataMap.get(plate);
+        if (knownData) {
+          return {
+            ...item,
+            Marca: item.Marca || knownData.Marca,
+            Model: item.Model || knownData.Model,
+          };
+        }
+      }
+      return item;
+    });
+  
+    return processed;
   };
   
 
@@ -771,19 +803,27 @@ export default function LPRPage() {
               )}
             </div>
             {hasInfo && (
-              <div className="p-3 bg-card text-left space-y-1">
+              <div className="p-3 bg-card text-left space-y-1.5">
                 {item["License Plate"] && <p className="font-bold text-lg truncate">{item["License Plate"]}</p>}
-                {item.Marca && (
+                {(item.Marca || item.Model) && (
                    <p className="text-sm text-muted-foreground truncate">
-                    {`${item.Marca} ${item.Model || ''}`}
+                    {`${item.Marca || ''} ${item.Model || ''}`}
                   </p>
                 )}
                 {item.CameraTitle && item.CameraID && (
-                  <Link href={`https://smartsampa.sentinelx.com.br/cameras/map/${item.CameraID}`} target="_blank" className="text-xs text-muted-foreground truncate hover:underline block">
-                    {item.CameraTitle}
-                  </Link>
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground truncate">
+                    <MapPin className="w-3 h-3" />
+                    <Link href={`https://smartsampa.sentinelx.com.br/cameras/map/${item.CameraID}`} target="_blank" className="hover:underline">
+                      {item.CameraTitle}
+                    </Link>
+                  </div>
                 )}
-                {item["Detected At"] && <p className="text-xs text-muted-foreground">{new Date(item["Detected At"]).toLocaleString()}</p>}
+                {item["Detected At"] && (
+                  <div className="flex items-center gap-2 text-sm font-semibold text-primary/90 pt-1">
+                     <Clock className="w-3.5 h-3.5" />
+                     <p>{new Date(item["Detected At"]).toLocaleString('pt-BR')}</p>
+                  </div>
+                )}
               </div>
             )}
           </Card>
