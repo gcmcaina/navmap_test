@@ -11,6 +11,7 @@ export type PlateData = {
   Marca?: string;
   Cor?: string;
   CameraID?: string;
+  CameraTitle?: string;
   CameraAddress?: string;
   preloadedImageUrl?: string;
   lat?: number;
@@ -22,4 +23,3 @@ export type CameraCoordinate = {
   lat: number;
   lng: number;
 };
-

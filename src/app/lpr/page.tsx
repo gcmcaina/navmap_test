@@ -146,7 +146,7 @@ export default function LPRPage() {
       const trustLevel = getField(item, ["Confiança", "Trust Level", "F"]);
       const isTrusted = trustLevel ? parseFloat(trustLevel) >= 86 : true;
   
-      const cameraID = getField(item, ["ID da Câmera", "Camera ID", "C"]);
+      const cameraID = getField(item, ["ID da Câmera", "Camera ID", "C", "D"]);
       let bodyType: 'Carro' | 'Moto' | 'Caminhão' | undefined;
       let marca: string | undefined;
       let model: string | undefined;
@@ -174,6 +174,7 @@ export default function LPRPage() {
         "Marca": marca,
         "Model": model,
         "CameraID": cameraID,
+        "CameraTitle": getField(item, ["Título da Câmera", "Camera Title", "E"]),
         "CameraAddress": getField(item, ["Endereço da Câmera", "Camera Address"]),
         "lat": coords?.lat,
         "lng": coords?.lng,
@@ -743,15 +744,15 @@ export default function LPRPage() {
         const itemDate = item['Detected At'] ? new Date(item['Detected At']).toLocaleDateString('pt-BR') : null;
         const isHovered = hoveredDate && itemDate === hoveredDate;
 
-        const hasInfo = item["License Plate"] || item.Marca || item.CameraAddress || item["Detected At"];
+        const hasInfo = item["License Plate"] || item.Marca || item.CameraTitle || item["Detected At"];
 
         return (
           <Card
             key={item.id}
-            className={`overflow-hidden group transition-all duration-300 ${!isUnavailable ? 'hover:shadow-xl cursor-pointer' : 'bg-muted/50'} ${isHovered ? '!blur-none !brightness-100' : ''}`}
-            onClick={() => !isUnavailable && handleImageClick(item)}
+            className={`overflow-hidden group transition-all duration-300 ${!isUnavailable ? 'hover:shadow-xl' : 'bg-muted/50'} ${isHovered ? '!blur-none !brightness-100' : ''}`}
+            
           >
-            <div className="relative w-full aspect-square bg-muted">
+            <div className="relative w-full aspect-square bg-muted" onClick={() => !isUnavailable && handleImageClick(item)}>
               {isUnavailable ? (
                 <div className="flex flex-col items-center justify-center h-full text-center p-4">
                   <ImageOff className="w-12 h-12 text-muted-foreground mb-2" />
@@ -763,7 +764,7 @@ export default function LPRPage() {
                   alt={item["License Plate"] || 'Imagem do Veículo'}
                   fill
                   style={{ objectFit: "cover" }}
-                  className="group-hover:opacity-90 transition-opacity"
+                  className="group-hover:opacity-90 transition-opacity cursor-pointer"
                   unoptimized
                   onError={() => handleImageError(item.id)}
                 />
@@ -777,9 +778,9 @@ export default function LPRPage() {
                     {`${item.Marca} ${item.Model || ''}`}
                   </p>
                 )}
-                {item.CameraAddress && (
-                  <Link href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(item.CameraAddress)}`} target="_blank" className="text-xs text-muted-foreground truncate hover:underline block">
-                    {item.CameraAddress}
+                {item.CameraTitle && item.CameraID && (
+                  <Link href={`https://smartsampa.sentinelx.com.br/cameras/map/${item.CameraID}`} target="_blank" className="text-xs text-muted-foreground truncate hover:underline block">
+                    {item.CameraTitle}
                   </Link>
                 )}
                 {item["Detected At"] && <p className="text-xs text-muted-foreground">{new Date(item["Detected At"]).toLocaleString()}</p>}
@@ -1192,10 +1193,10 @@ export default function LPRPage() {
                    {selectedItem["Detected At"] && (
                       <p><span className="font-semibold">Detectado em:</span> {new Date(selectedItem["Detected At"]).toLocaleString()}</p>
                    )}
-                   {selectedItem.CameraAddress && (
+                   {selectedItem.CameraTitle && selectedItem.CameraID && (
                      <p><span className="font-semibold">Local:</span>{' '}
-                       <Link href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(selectedItem.CameraAddress)}`} target="_blank" className="hover:underline">
-                         {selectedItem.CameraAddress}
+                       <Link href={`https://smartsampa.sentinelx.com.br/cameras/map/${selectedItem.CameraID}`} target="_blank" className="hover:underline">
+                         {selectedItem.CameraTitle}
                        </Link>
                      </p>
                    )}
