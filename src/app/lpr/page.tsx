@@ -429,14 +429,14 @@ export default function LPRPage() {
         }
       }
 
-      const addHeader = (pageNum: number) => {
+      const addHeader = () => {
         doc.setFontSize(titleSize);
         doc.setFont(font.name, 'bold');
         doc.text("Relatório de Veículos", margin, yPosition);
 
         doc.setFontSize(headerSize);
         doc.setFont(font.name, 'normal');
-        const headerText = `Gerado em: ${new Date().toLocaleString('pt-BR')} | Página ${pageNum}`;
+        const headerText = `Gerado em: ${new Date().toLocaleString('pt-BR')}`;
         doc.text(headerText, pageWidth - margin, yPosition, { align: 'right' });
         yPosition += 20;
       }
@@ -445,10 +445,8 @@ export default function LPRPage() {
         if (yPosition + neededHeight > pageHeight - margin) {
           doc.addPage();
           addBackground();
-          yPosition = margin; // Reset position, header not added here
-          return true;
+          yPosition = margin;
         }
-        return false;
       };
 
       const addTextInfo = (item: PlateData, x: number, y: number) => {
@@ -476,9 +474,8 @@ export default function LPRPage() {
         return textY;
       }
       
-      let pageNum = 1;
       addBackground();
-      addHeader(pageNum);
+      addHeader();
 
       // Special layout for a single plate
       if (availableData.length === 1) {
@@ -803,7 +800,19 @@ export default function LPRPage() {
             </div>
             {hasInfo && (
               <div className="p-3 bg-card text-left space-y-1.5">
-                {item["License Plate"] && <p className="font-bold text-lg truncate">{item["License Plate"]}</p>}
+                {item["License Plate"] && (
+                  <div 
+                    className="h-8 w-32 rounded-sm flex items-center justify-center bg-cover bg-center"
+                    style={{ backgroundImage: `url(${mercosulPlateBase64})` }}
+                  >
+                    <p 
+                      className="text-black text-xl font-bold tracking-wider" 
+                      style={{ fontFamily: feFontBase64 ? 'FE-Font' : 'monospace' }}
+                    >
+                      {item["License Plate"]}
+                    </p>
+                  </div>
+                )}
                 {(item.Marca || item.Model) && (
                    <p className="text-sm text-muted-foreground truncate">
                     {`${item.Marca || ''} ${item.Model || ''}`}
@@ -833,6 +842,12 @@ export default function LPRPage() {
   
   return (
     <div className="min-h-screen bg-background text-foreground">
+      <style>{`
+        @font-face {
+          font-family: 'FE-Font';
+          src: url('data:font/ttf;base64,${feFontBase64}') format('truetype');
+        }
+      `}</style>
       <div className="container mx-auto p-4 sm:p-6 lg:p-8">
         <Collapsible
           open={isHeaderOpen}
@@ -1250,6 +1265,3 @@ export default function LPRPage() {
 }
 
     
-
-    
-
