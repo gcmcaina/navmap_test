@@ -801,17 +801,7 @@ export default function LPRPage() {
             {hasInfo && (
               <div className="p-3 bg-card text-left space-y-1.5">
                 {item["License Plate"] && (
-                  <div 
-                    className="h-8 w-32 rounded-sm flex items-center justify-center bg-cover bg-center"
-                    style={{ backgroundImage: `url(${mercosulPlateBase64})` }}
-                  >
-                    <p 
-                      className="text-black text-xl font-bold tracking-wider" 
-                      style={{ fontFamily: feFontBase64 ? 'FE-Font' : 'monospace' }}
-                    >
-                      {item["License Plate"]}
-                    </p>
-                  </div>
+                    <h3 className="font-bold text-lg truncate">{item["License Plate"]}</h3>
                 )}
                 {(item.Marca || item.Model) && (
                    <p className="text-sm text-muted-foreground truncate">
@@ -1232,8 +1222,14 @@ export default function LPRPage() {
                   </a>
                 </Button>
             </div>
-             <div className="flex-shrink-0 p-4 bg-muted/50 rounded-b-lg mt-2">
-                <h3 className="text-xl font-bold">{selectedItem["License Plate"]}</h3>
+             <div className="flex-shrink-0 p-4 bg-muted/50 rounded-b-lg mt-2 space-y-2">
+                {selectedItem["License Plate"] && (
+                  <div className="mx-auto h-16 w-64 rounded-md flex items-center justify-center bg-cover bg-center shadow-md" style={{ backgroundImage: `url(${mercosulPlateBase64})` }}>
+                    <p className="text-black text-4xl font-bold tracking-widest" style={{ fontFamily: feFontBase64 ? 'FE-Font' : 'monospace' }}>
+                      {selectedItem["License Plate"]}
+                    </p>
+                  </div>
+                )}
                 <div className="text-sm text-muted-foreground grid grid-cols-2 gap-x-4 gap-y-1 mt-2">
                    {selectedItem.Marca && (
                      <p><span className="font-semibold">Marca:</span> {selectedItem.Marca}</p>
