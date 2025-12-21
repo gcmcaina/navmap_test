@@ -1224,7 +1224,15 @@ export default function LPRPage() {
             </div>
              <div className="flex-shrink-0 p-4 bg-muted/50 rounded-b-lg mt-2 space-y-2">
                 {selectedItem["License Plate"] && (
-                  <div className="mx-auto h-16 w-64 rounded-md flex items-center justify-center bg-cover bg-center shadow-md" style={{ backgroundImage: `url(${mercosulPlateBase64})` }}>
+                  <div 
+                    className="mx-auto h-16 w-64 rounded-md flex items-center justify-center shadow-md" 
+                    style={{ 
+                      backgroundImage: `url(${mercosulPlateBase64})`,
+                      backgroundSize: 'cover',
+                      backgroundPosition: 'center',
+                      backgroundRepeat: 'no-repeat'
+                    }}
+                  >
                     <p className="text-black text-4xl font-bold tracking-widest" style={{ fontFamily: feFontBase64 ? 'FE-Font' : 'monospace' }}>
                       {selectedItem["License Plate"]}
                     </p>
