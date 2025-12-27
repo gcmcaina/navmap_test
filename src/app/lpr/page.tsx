@@ -569,18 +569,19 @@ export default function LPRPage() {
           const item = reportAvailableData[i];
           const itemHeight = 75; 
           
-          if (itemsOnPage > 0) {
-              yPosition += 10; // Space between items
-              checkNewPage(2);
-              doc.setDrawColor(200, 200, 200);
-              doc.line(margin, yPosition - 5, pageWidth - margin, yPosition - 5);
+          if (i > 0) { // Add page break before starting a new item if needed
+            if (itemsOnPage >= 3 || (yPosition + itemHeight > pageHeight - margin)) {
+                doc.addPage();
+                addBackground();
+                yPosition = margin;
+                itemsOnPage = 0;
+            }
           }
 
-          if (itemsOnPage >= 2 || (yPosition + itemHeight > pageHeight - margin) ) {
-              doc.addPage();
-              addBackground();
-              yPosition = margin;
-              itemsOnPage = 0;
+          if (itemsOnPage > 0) {
+              yPosition += 10; // Space between items
+              doc.setDrawColor(200, 200, 200);
+              doc.line(margin, yPosition - 5, pageWidth - margin, yPosition - 5);
           }
 
           const textX = margin + 90;
@@ -1300,3 +1301,4 @@ export default function LPRPage() {
     
 
     
+
