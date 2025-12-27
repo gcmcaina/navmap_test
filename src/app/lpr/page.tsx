@@ -430,6 +430,7 @@ export default function LPRPage() {
       }
 
       const addHeader = () => {
+        yPosition = margin;
         doc.setFontSize(titleSize);
         doc.setFont(font.name, 'bold');
         doc.text("Relatório de Veículos", margin, yPosition);
@@ -477,6 +478,8 @@ export default function LPRPage() {
       addBackground();
       addHeader();
 
+      const corsProxy = 'https://cors-anywhere.herokuapp.com/';
+
       // Special layout for a single plate
       if (availableData.length === 1) {
         const item = availableData[0];
@@ -509,7 +512,8 @@ export default function LPRPage() {
 
         // Add vehicle image
         try {
-          const response = await fetch(item['Image URL']);
+          const imageUrl = `${corsProxy}${item['Image URL']}`;
+          const response = await fetch(imageUrl);
           if (!response.ok) throw new Error('Falha ao buscar imagem.');
           const blob = await response.blob();
           const dataUrl = await new Promise<string>((resolve, reject) => {
@@ -550,7 +554,8 @@ export default function LPRPage() {
           const textX = margin + 90;
 
           try {
-            const response = await fetch(item['Image URL']);
+            const imageUrl = `${corsProxy}${item['Image URL']}`;
+            const response = await fetch(imageUrl);
             if (!response.ok) throw new Error('Falha ao buscar imagem.');
             const blob = await response.blob();
             const dataUrl = await new Promise<string>((resolve, reject) => {
@@ -1267,5 +1272,7 @@ export default function LPRPage() {
     </div>
   );
 }
+
+    
 
     
