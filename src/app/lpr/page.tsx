@@ -352,9 +352,12 @@ export default function LPRPage() {
     });
 
     const zip = new JSZip();
+    const your_cloudflare_worker_url = "https://imageproxy.gcmcaina.workers.dev/";
+
     const imagePromises = availableData.map(async (item) => {
       try {
-        const response = await fetch(item["Image URL"]);
+        const imageUrl = `${your_cloudflare_worker_url}?url=${encodeURIComponent(item['Image URL'])}`;
+        const response = await fetch(imageUrl);
         if (!response.ok) throw new Error(`Falha ao buscar imagem: ${item["Image URL"]}`);
         const blob = await response.blob();
         const filename = `${item["License Plate"] || 'sem-placa'}_${item.id}.jpg`;
@@ -476,7 +479,9 @@ export default function LPRPage() {
           doc.addPage();
           addBackground();
           yPosition = margin;
+          return true; // Indicates a new page was added
         }
+        return false;
       };
   
       const addTextInfo = (item: PlateData, x: number, y: number) => {
@@ -559,11 +564,25 @@ export default function LPRPage() {
         addTextInfo(item, margin, yPosition);
   
       } else { 
+        let itemsOnPage = 0;
         for (let i = 0; i < reportAvailableData.length; i++) {
           const item = reportAvailableData[i];
-          const itemHeight = 75;
-          checkNewPage(itemHeight);
-  
+          const itemHeight = 75; 
+          
+          if (itemsOnPage > 0) {
+              yPosition += 10; // Space between items
+              checkNewPage(2);
+              doc.setDrawColor(200, 200, 200);
+              doc.line(margin, yPosition - 5, pageWidth - margin, yPosition - 5);
+          }
+
+          if (itemsOnPage >= 2 || (yPosition + itemHeight > pageHeight - margin) ) {
+              doc.addPage();
+              addBackground();
+              yPosition = margin;
+              itemsOnPage = 0;
+          }
+
           const textX = margin + 90;
   
           try {
@@ -600,17 +619,12 @@ export default function LPRPage() {
             doc.textWithLink('Ver Imagem', textX, textY, { url: item['Image URL'] });
             doc.setTextColor(0, 0, 0);
           }
-        
+          itemsOnPage++;
           yPosition += itemHeight;
-          if(i < reportAvailableData.length -1) {
-            checkNewPage(2);
-            doc.setDrawColor(200, 200, 200);
-            doc.line(margin, yPosition - 5, pageWidth - margin, yPosition - 5);
-          }
         }
       }
   
-      if (reportUnavailableData.length > 0 && reportAvailableData.length !== 1) {
+      if (reportUnavailableData.length > 0) {
         doc.addPage();
         addBackground();
         yPosition = margin;
@@ -629,7 +643,11 @@ export default function LPRPage() {
         }, {} as Record<string, PlateData[]>);
   
         for (const plate in groupedByPlate) {
-          checkNewPage(10);
+          if(checkNewPage(10)) {
+              doc.setFontSize(headerSize).setFont(font.name, 'bold');
+              doc.text(`Imagens Indisponíveis (continuação)`, margin, yPosition);
+              yPosition += lineHeight.large;
+          }
           doc.setFontSize(bodySize).setFont(font.name, 'bold');
           doc.text(plate, margin, yPosition);
           yPosition += lineHeight.medium;
