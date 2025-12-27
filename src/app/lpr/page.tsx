@@ -388,20 +388,51 @@ export default function LPRPage() {
   };
 
   const handleGenerateReport = async () => {
-    if (isGeneratingReport || data.length === 0) return;
+    if (isGeneratingReport || sortedData.length === 0) return;
     setIsGeneratingReport(true);
     toast({
       title: 'Gerando Relatório',
       description: 'Aguarde enquanto o relatório em PDF é preparado...',
     });
-
+  
+    const localImageErrors: Record<string, boolean> = {};
+    const reportData = [...sortedData];
+    const reportAvailableData: PlateData[] = [];
+    const reportUnavailableData: PlateData[] = [];
+  
+    // Fetch all images and categorize them
+    const corsProxy = 'https://cors-anywhere.herokuapp.com/';
+    await Promise.all(reportData.map(async (item) => {
+      try {
+        const imageUrl = `${corsProxy}${item['Image URL']}`;
+        const response = await fetch(imageUrl);
+        if (!response.ok) throw new Error('Network response was not ok');
+        const blob = await response.blob();
+        const dataUrl = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result as string);
+          reader.onerror = reject;
+          reader.readAsDataURL(blob);
+        });
+        item.preloadedImageUrl = dataUrl;
+        reportAvailableData.push(item);
+      } catch (e) {
+        reportUnavailableData.push(item);
+        localImageErrors[item.id] = true;
+      }
+    }));
+  
+    // Sort again as async operations might mess up the order
+    reportAvailableData.sort((a, b) => new Date(b["Detected At"] || 0).getTime() - new Date(a["Detected At"] || 0).getTime());
+    reportUnavailableData.sort((a, b) => new Date(b["Detected At"] || 0).getTime() - new Date(a["Detected At"] || 0).getTime());
+  
     try {
       const doc = new jsPDF({
         orientation: pdfLayoutConfig.orientation,
         unit: pdfLayoutConfig.unit,
         format: pdfLayoutConfig.format,
       });
-
+  
       const {
         margin,
         pageWidth,
@@ -415,7 +446,7 @@ export default function LPRPage() {
         image,
       } = pdfLayoutConfig;
       let yPosition = margin;
-
+  
       const addBackground = () => {
         if (logoBase64 && !logoBase64.startsWith('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=')) {
           const logoWidth = image.width;
@@ -428,13 +459,13 @@ export default function LPRPage() {
           doc.restoreGraphicsState();
         }
       }
-
+  
       const addHeader = () => {
         yPosition = margin;
         doc.setFontSize(titleSize);
         doc.setFont(font.name, 'bold');
         doc.text("Relatório de Veículos", margin, yPosition);
-
+  
         doc.setFontSize(headerSize);
         doc.setFont(font.name, 'normal');
         const headerText = `Gerado em: ${new Date().toLocaleString('pt-BR')}`;
@@ -449,7 +480,7 @@ export default function LPRPage() {
           yPosition = margin;
         }
       };
-
+  
       const addTextInfo = (item: PlateData, x: number, y: number) => {
         let textY = y;
         doc.setFontSize(bodySize).setFont(font.name, 'bold');
@@ -477,14 +508,12 @@ export default function LPRPage() {
       
       addBackground();
       addHeader();
-
-      const corsProxy = 'https://cors-anywhere.herokuapp.com/';
-
+  
       // Special layout for a single plate
-      if (availableData.length === 1) {
-        const item = availableData[0];
+      if (reportAvailableData.length === 1 && reportUnavailableData.length === 0) {
+        const item = reportAvailableData[0];
         const plate = item["License Plate"] || "N/A";
-
+  
         // Add Mercosul Plate background
         if (mercosulPlateBase64.length > 100) { // Check if it's not the placeholder
           const plateImgWidth = 100;
@@ -492,7 +521,7 @@ export default function LPRPage() {
           const plateX = (pageWidth - plateImgWidth) / 2;
           doc.addImage(mercosulPlateBase64, 'PNG', plateX, yPosition, plateImgWidth, plateImgHeight);
           yPosition += plateImgHeight;
-
+  
           // Add custom font and plate text
           if (feFontBase64) {
             doc.addFileToVFS('fe-font.ttf', feFontBase64);
@@ -509,30 +538,21 @@ export default function LPRPage() {
         yPosition += 10;
         doc.setFont(font.name, 'normal');
         checkNewPage(110);
-
+  
         // Add vehicle image
         try {
-          const imageUrl = `${corsProxy}${item['Image URL']}`;
-          const response = await fetch(imageUrl);
-          if (!response.ok) throw new Error('Falha ao buscar imagem.');
-          const blob = await response.blob();
-          const dataUrl = await new Promise<string>((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onloadend = () => resolve(reader.result as string);
-            reader.onerror = reject;
-            reader.readAsDataURL(blob);
-          });
-
+          if (!item.preloadedImageUrl) throw new Error('Imagem pré-carregada não encontrada.');
+          
           const img = new (window as any).Image();
-          img.src = dataUrl;
+          img.src = item.preloadedImageUrl;
           await new Promise(resolve => { img.onload = resolve; });
-
+  
           const imgMaxHeight = 100;
           const aspectRatio = img.width / img.height;
           const imgWidth = imgMaxHeight * aspectRatio;
           const imgX = (pageWidth - imgWidth) / 2;
           
-          doc.addImage(dataUrl, 'JPEG', imgX, yPosition, imgWidth, imgMaxHeight);
+          doc.addImage(item.preloadedImageUrl, 'JPEG', imgX, yPosition, imgWidth, imgMaxHeight);
           yPosition += imgMaxHeight + 10;
         } catch (e) {
           console.error(`Falha ao carregar imagem para o relatório: ${item['Image URL']}`, e);
@@ -540,41 +560,32 @@ export default function LPRPage() {
           doc.text('Imagem indisponível', pageWidth / 2, yPosition + 50, {align: 'center'});
           yPosition += 110;
         }
-
+  
         // Add text info below the image
         checkNewPage(50);
         addTextInfo(item, margin, yPosition);
-
+  
       } else { // Default layout for multiple plates
-        for (let i = 0; i < availableData.length; i++) {
-          const item = availableData[i];
+        for (let i = 0; i < reportAvailableData.length; i++) {
+          const item = reportAvailableData[i];
           const itemHeight = 75;
           checkNewPage(itemHeight);
-
+  
           const textX = margin + 90;
-
+  
           try {
-            const imageUrl = `${corsProxy}${item['Image URL']}`;
-            const response = await fetch(imageUrl);
-            if (!response.ok) throw new Error('Falha ao buscar imagem.');
-            const blob = await response.blob();
-            const dataUrl = await new Promise<string>((resolve, reject) => {
-              const reader = new FileReader();
-              reader.onloadend = () => resolve(reader.result as string);
-              reader.onerror = reject;
-              reader.readAsDataURL(blob);
-            });
-            
-            const img = new (window as any).Image();
-            img.src = dataUrl;
-            await new Promise(resolve => { img.onload = resolve; });
+            if (!item.preloadedImageUrl) throw new Error('Imagem pré-carregada não encontrada.');
 
+            const img = new (window as any).Image();
+            img.src = item.preloadedImageUrl;
+            await new Promise(resolve => { img.onload = resolve; });
+  
             const imgMaxWidth = 80;
             const imgMaxHeight = 60;
             let imgWidth = img.width;
             let imgHeight = img.height;
             const aspectRatio = imgWidth / imgHeight;
-
+  
             if (imgWidth > imgMaxWidth) {
               imgWidth = imgMaxWidth;
               imgHeight = imgWidth / aspectRatio;
@@ -584,7 +595,7 @@ export default function LPRPage() {
               imgWidth = imgHeight * aspectRatio;
             }
             
-            doc.addImage(dataUrl, 'JPEG', margin, yPosition, imgWidth, imgHeight);
+            doc.addImage(item.preloadedImageUrl, 'JPEG', margin, yPosition, imgWidth, imgHeight);
             
           } catch (e) {
             console.error(`Falha ao carregar imagem para o relatório: ${item['Image URL']}`, e);
@@ -598,22 +609,22 @@ export default function LPRPage() {
           }
         
           yPosition += itemHeight;
-          if(i < availableData.length -1) {
+          if(i < reportAvailableData.length -1) {
             checkNewPage(2);
             doc.setDrawColor(200, 200, 200);
             doc.line(margin, yPosition - 5, pageWidth - margin, yPosition - 5);
           }
         }
       }
-
-      if (unavailableData.length > 0 && availableData.length !== 1) {
+  
+      if (reportUnavailableData.length > 0 && reportAvailableData.length !== 1) {
         checkNewPage(20);
         yPosition += 10;
         doc.setFontSize(headerSize).setFont(font.name, 'bold');
-        doc.text(`Imagens Indisponíveis (${unavailableData.length})`, margin, yPosition);
+        doc.text(`Imagens Indisponíveis (${reportUnavailableData.length})`, margin, yPosition);
         yPosition += lineHeight.large;
         
-        const groupedByPlate = unavailableData.reduce((acc, item) => {
+        const groupedByPlate = reportUnavailableData.reduce((acc, item) => {
           const plate = item["License Plate"] || "Sem Placa";
           if (!acc[plate]) {
             acc[plate] = [];
@@ -621,17 +632,15 @@ export default function LPRPage() {
           acc[plate].push(item);
           return acc;
         }, {} as Record<string, PlateData[]>);
-
+  
         for (const plate in groupedByPlate) {
           checkNewPage(10);
           doc.setFontSize(bodySize).setFont(font.name, 'bold');
           doc.text(plate, margin, yPosition);
           yPosition += lineHeight.medium;
-
-          const items = groupedByPlate[plate].sort((a,b) => 
-             new Date(a["Detected At"] || 0).getTime() - new Date(b["Detected At"] || 0).getTime()
-          );
-
+  
+          const items = groupedByPlate[plate];
+  
           for (const item of items) {
              checkNewPage(5);
              doc.setFontSize(smallSize).setFont(font.name, 'normal');
