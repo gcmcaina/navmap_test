@@ -395,18 +395,20 @@ export default function LPRPage() {
       description: 'Aguarde enquanto o relatório em PDF é preparado...',
     });
   
-    const localImageErrors: Record<string, boolean> = {};
-    const reportData = [...sortedData];
+    // Usar a lista completa de dados filtrados (sortedData) como base
+    const reportData = [...sortedData]; 
     const reportAvailableData: PlateData[] = [];
     const reportUnavailableData: PlateData[] = [];
   
+    // Substitua esta URL pela URL do seu Cloudflare Worker
+    const your_cloudflare_worker_url = "COLE_A_URL_DO_SEU_WORKER_AQUI";
+    
     // Fetch all images and categorize them
-    const corsProxy = 'https://cors-anywhere.herokuapp.com/';
     await Promise.all(reportData.map(async (item) => {
       try {
-        const imageUrl = `${corsProxy}${item['Image URL']}`;
+        const imageUrl = `${your_cloudflare_worker_url}?url=${encodeURIComponent(item['Image URL'])}`;
         const response = await fetch(imageUrl);
-        if (!response.ok) throw new Error('Network response was not ok');
+        if (!response.ok) throw new Error('Falha ao buscar imagem.');
         const blob = await response.blob();
         const dataUrl = await new Promise<string>((resolve, reject) => {
           const reader = new FileReader();
@@ -417,12 +419,12 @@ export default function LPRPage() {
         item.preloadedImageUrl = dataUrl;
         reportAvailableData.push(item);
       } catch (e) {
+        console.error(`Erro ao buscar ${item['Image URL']}:`, e);
         reportUnavailableData.push(item);
-        localImageErrors[item.id] = true;
       }
     }));
   
-    // Sort again as async operations might mess up the order
+    // Ordenar os dados após o fetch
     reportAvailableData.sort((a, b) => new Date(b["Detected At"] || 0).getTime() - new Date(a["Detected At"] || 0).getTime());
     reportUnavailableData.sort((a, b) => new Date(b["Detected At"] || 0).getTime() - new Date(a["Detected At"] || 0).getTime());
   
@@ -1242,7 +1244,7 @@ export default function LPRPage() {
                     className="mx-auto h-16 w-64 rounded-md flex items-center justify-center shadow-md" 
                     style={{ 
                       backgroundImage: `url(${mercosulPlateBase64})`,
-                      backgroundSize: 'cover',
+                      backgroundSize: '100% 100%',
                       backgroundPosition: 'center',
                       backgroundRepeat: 'no-repeat'
                     }}
@@ -1285,3 +1287,4 @@ export default function LPRPage() {
     
 
     
+
