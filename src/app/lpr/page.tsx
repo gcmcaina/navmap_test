@@ -474,14 +474,14 @@ export default function LPRPage() {
         yPosition += 20;
       }
       
-      const checkNewPage = (neededHeight: number) => {
-        if (yPosition + neededHeight > pageHeight - margin) {
-          doc.addPage();
-          addBackground();
-          yPosition = margin;
-          return true; // Indicates a new page was added
+      const checkNewPage = (isHeaderNeeded: boolean) => {
+        doc.addPage();
+        addBackground();
+        yPosition = margin;
+        if (isHeaderNeeded) {
+            addHeader();
         }
-        return false;
+        return true; 
       };
   
       const addTextInfo = (item: PlateData, x: number, y: number) => {
@@ -537,7 +537,7 @@ export default function LPRPage() {
         
         yPosition += 10;
         doc.setFont(font.name, 'normal');
-        checkNewPage(110);
+        if (yPosition + 110 > pageHeight - margin) checkNewPage(false);
   
         try {
           if (!item.preloadedImageUrl) throw new Error('Imagem pré-carregada não encontrada.');
@@ -560,30 +560,22 @@ export default function LPRPage() {
           yPosition += 110;
         }
   
-        checkNewPage(50);
+        if (yPosition + 50 > pageHeight - margin) checkNewPage(false);
         addTextInfo(item, margin, yPosition);
   
       } else { 
-        let itemsOnPage = 0;
+        const availablePageHeight = pageHeight - (margin * 2);
+        const sectionHeight = availablePageHeight / 3;
+
         for (let i = 0; i < reportAvailableData.length; i++) {
           const item = reportAvailableData[i];
-          const itemHeight = 75; 
-          
-          if (i > 0) { // Add page break before starting a new item if needed
-            if (itemsOnPage >= 3 || (yPosition + itemHeight > pageHeight - margin)) {
-                doc.addPage();
-                addBackground();
-                yPosition = margin;
-                itemsOnPage = 0;
-            }
+          const itemIndexOnPage = i % 3;
+
+          if (i > 0 && itemIndexOnPage === 0) {
+            checkNewPage(true); // Adiciona nova página para cada 4º item
           }
 
-          if (itemsOnPage > 0) {
-              yPosition += 10; // Space between items
-              doc.setDrawColor(200, 200, 200);
-              doc.line(margin, yPosition - 5, pageWidth - margin, yPosition - 5);
-          }
-
+          const sectionYStart = yPosition + (itemIndexOnPage * sectionHeight);
           const textX = margin + 90;
   
           try {
@@ -594,7 +586,7 @@ export default function LPRPage() {
             await new Promise(resolve => { img.onload = resolve; });
   
             const imgMaxWidth = 80;
-            const imgMaxHeight = 60;
+            const imgMaxHeight = sectionHeight - 20; // Deixar alguma margem
             let imgWidth = img.width;
             let imgHeight = img.height;
             const aspectRatio = imgWidth / imgHeight;
@@ -607,28 +599,33 @@ export default function LPRPage() {
               imgHeight = imgMaxHeight;
               imgWidth = imgHeight * aspectRatio;
             }
-            
-            doc.addImage(item.preloadedImageUrl, 'JPEG', margin, yPosition, imgWidth, imgHeight);
+            const imageY = sectionYStart + (sectionHeight - imgHeight) / 2;
+            doc.addImage(item.preloadedImageUrl, 'JPEG', margin, imageY, imgWidth, imgHeight);
             
           } catch (e) {
             console.error(`Falha ao carregar imagem para o relatório: ${item['Image URL']}`, e);
             doc.setFontSize(smallSize).setFont(font.name, 'italic');
-            doc.text('Imagem indisponível', margin, yPosition + 30);
+            const textYPos = sectionYStart + sectionHeight / 2;
+            doc.text('Imagem indisponível', margin + 40, textYPos, { align: 'center' });
           } finally {
-            let textY = addTextInfo(item, textX, yPosition + 5);
+            const textY = sectionYStart + 10;
+            let finalY = addTextInfo(item, textX, textY);
             doc.setTextColor(pdfLayoutConfig.linkColor.r, pdfLayoutConfig.linkColor.g, pdfLayoutConfig.linkColor.b);
-            doc.textWithLink('Ver Imagem', textX, textY, { url: item['Image URL'] });
+            doc.textWithLink('Ver Imagem', textX, finalY, { url: item['Image URL'] });
             doc.setTextColor(0, 0, 0);
           }
-          itemsOnPage++;
-          yPosition += itemHeight;
+
+          if(itemIndexOnPage < 2 && i < reportAvailableData.length -1) {
+            const lineY = sectionYStart + sectionHeight;
+            doc.setDrawColor(200, 200, 200);
+            doc.line(margin, lineY, pageWidth - margin, lineY);
+          }
         }
       }
   
       if (reportUnavailableData.length > 0) {
-        doc.addPage();
-        addBackground();
-        yPosition = margin;
+        checkNewPage(true);
+        yPosition = margin + 20;
         
         doc.setFontSize(headerSize).setFont(font.name, 'bold');
         doc.text(`Imagens Indisponíveis (${reportUnavailableData.length})`, margin, yPosition);
@@ -644,7 +641,9 @@ export default function LPRPage() {
         }, {} as Record<string, PlateData[]>);
   
         for (const plate in groupedByPlate) {
-          if(checkNewPage(10)) {
+          if (yPosition + 10 > pageHeight - margin) {
+              checkNewPage(true);
+              yPosition = margin + 20;
               doc.setFontSize(headerSize).setFont(font.name, 'bold');
               doc.text(`Imagens Indisponíveis (continuação)`, margin, yPosition);
               yPosition += lineHeight.large;
@@ -656,7 +655,10 @@ export default function LPRPage() {
           const items = groupedByPlate[plate];
   
           for (const item of items) {
-             checkNewPage(5);
+             if (yPosition + 5 > pageHeight - margin) {
+                checkNewPage(true);
+                yPosition = margin + 20;
+             }
              doc.setFontSize(smallSize).setFont(font.name, 'normal');
              const date = item["Detected At"] ? new Date(item["Detected At"]).toLocaleString('pt-BR') : 'Data desconhecida';
              const address = item.CameraAddress || 'Endereço desconhecido';
@@ -845,7 +847,7 @@ export default function LPRPage() {
                   </div>
                 )}
                 {item["Detected At"] && (
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground pt-1">
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground pt-1">
                      <Clock className="w-3.5 h-3.5" />
                      <p>{new Date(item["Detected At"]).toLocaleString('pt-BR')}</p>
                   </div>
@@ -1301,4 +1303,5 @@ export default function LPRPage() {
     
 
     
+
 
