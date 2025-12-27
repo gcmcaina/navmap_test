@@ -395,15 +395,12 @@ export default function LPRPage() {
       description: 'Aguarde enquanto o relatório em PDF é preparado...',
     });
   
-    // Usar a lista completa de dados filtrados (sortedData) como base
-    const reportData = [...sortedData]; 
+    const reportData = [...sortedData];
     const reportAvailableData: PlateData[] = [];
     const reportUnavailableData: PlateData[] = [];
   
-    // Substitua esta URL pela URL do seu Cloudflare Worker
-    const your_cloudflare_worker_url = "COLE_A_URL_DO_SEU_WORKER_AQUI";
+    const your_cloudflare_worker_url = "https://imageproxy.gcmcaina.workers.dev/";
     
-    // Fetch all images and categorize them
     await Promise.all(reportData.map(async (item) => {
       try {
         const imageUrl = `${your_cloudflare_worker_url}?url=${encodeURIComponent(item['Image URL'])}`;
@@ -424,7 +421,6 @@ export default function LPRPage() {
       }
     }));
   
-    // Ordenar os dados após o fetch
     reportAvailableData.sort((a, b) => new Date(b["Detected At"] || 0).getTime() - new Date(a["Detected At"] || 0).getTime());
     reportUnavailableData.sort((a, b) => new Date(b["Detected At"] || 0).getTime() - new Date(a["Detected At"] || 0).getTime());
   
@@ -511,20 +507,17 @@ export default function LPRPage() {
       addBackground();
       addHeader();
   
-      // Special layout for a single plate
       if (reportAvailableData.length === 1 && reportUnavailableData.length === 0) {
         const item = reportAvailableData[0];
         const plate = item["License Plate"] || "N/A";
   
-        // Add Mercosul Plate background
-        if (mercosulPlateBase64.length > 100) { // Check if it's not the placeholder
+        if (mercosulPlateBase64.length > 100) { 
           const plateImgWidth = 100;
           const plateImgHeight = 30;
           const plateX = (pageWidth - plateImgWidth) / 2;
           doc.addImage(mercosulPlateBase64, 'PNG', plateX, yPosition, plateImgWidth, plateImgHeight);
           yPosition += plateImgHeight;
   
-          // Add custom font and plate text
           if (feFontBase64) {
             doc.addFileToVFS('fe-font.ttf', feFontBase64);
             doc.addFont('fe-font.ttf', 'FE-Font', 'normal');
@@ -541,7 +534,6 @@ export default function LPRPage() {
         doc.setFont(font.name, 'normal');
         checkNewPage(110);
   
-        // Add vehicle image
         try {
           if (!item.preloadedImageUrl) throw new Error('Imagem pré-carregada não encontrada.');
           
@@ -563,11 +555,10 @@ export default function LPRPage() {
           yPosition += 110;
         }
   
-        // Add text info below the image
         checkNewPage(50);
         addTextInfo(item, margin, yPosition);
   
-      } else { // Default layout for multiple plates
+      } else { 
         for (let i = 0; i < reportAvailableData.length; i++) {
           const item = reportAvailableData[i];
           const itemHeight = 75;
@@ -1288,3 +1279,4 @@ export default function LPRPage() {
 
     
 
+    
