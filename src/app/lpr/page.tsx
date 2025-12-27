@@ -611,8 +611,10 @@ export default function LPRPage() {
       }
   
       if (reportUnavailableData.length > 0 && reportAvailableData.length !== 1) {
-        checkNewPage(20);
-        yPosition += 10;
+        doc.addPage();
+        addBackground();
+        yPosition = margin;
+        
         doc.setFontSize(headerSize).setFont(font.name, 'bold');
         doc.text(`Imagens Indisponíveis (${reportUnavailableData.length})`, margin, yPosition);
         yPosition += lineHeight.large;
