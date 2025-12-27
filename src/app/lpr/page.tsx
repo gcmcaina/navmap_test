@@ -325,7 +325,7 @@ export default function LPRPage() {
     if (isPanning && imageRef.current) {
       e.preventDefault();
       const newX = e.clientX - startPosRef.current.x;
-      const newY = e.clientY - startPosRef.current.y;
+      const newY = e.clientY - position.y;
       setPosition({ x: newX, y: newY });
     }
   };
@@ -572,7 +572,7 @@ export default function LPRPage() {
           const itemIndexOnPage = i % 3;
 
           if (i > 0 && itemIndexOnPage === 0) {
-            checkNewPage(true); // Adiciona nova página para cada 4º item
+            checkNewPage(true);
           }
 
           const sectionYStart = yPosition + (itemIndexOnPage * sectionHeight);
@@ -586,7 +586,7 @@ export default function LPRPage() {
             await new Promise(resolve => { img.onload = resolve; });
   
             const imgMaxWidth = 80;
-            const imgMaxHeight = sectionHeight - 20; // Deixar alguma margem
+            const imgMaxHeight = sectionHeight - 20; 
             let imgWidth = img.width;
             let imgHeight = img.height;
             const aspectRatio = imgWidth / imgHeight;
@@ -602,18 +602,21 @@ export default function LPRPage() {
             const imageY = sectionYStart + (sectionHeight - imgHeight) / 2;
             doc.addImage(item.preloadedImageUrl, 'JPEG', margin, imageY, imgWidth, imgHeight);
             
-          } catch (e) {
-            console.error(`Falha ao carregar imagem para o relatório: ${item['Image URL']}`, e);
-            doc.setFontSize(smallSize).setFont(font.name, 'italic');
-            const textYPos = sectionYStart + sectionHeight / 2;
-            doc.text('Imagem indisponível', margin + 40, textYPos, { align: 'center' });
-          } finally {
-            const textY = sectionYStart + 10;
+            const textY = imageY;
             let finalY = addTextInfo(item, textX, textY);
             doc.setTextColor(pdfLayoutConfig.linkColor.r, pdfLayoutConfig.linkColor.g, pdfLayoutConfig.linkColor.b);
             doc.textWithLink('Ver Imagem', textX, finalY, { url: item['Image URL'] });
             doc.setTextColor(0, 0, 0);
-          }
+
+          } catch (e) {
+            console.error(`Falha ao carregar imagem para o relatório: ${item['Image URL']}`, e);
+            const textYPos = sectionYStart + sectionHeight / 2;
+            doc.setFontSize(smallSize).setFont(font.name, 'italic');
+            doc.text('Imagem indisponível', margin + 40, textYPos, { align: 'center' });
+            
+            const textY = textYPos - (lineHeight.large + (2 * lineHeight.small)) / 2;
+            addTextInfo(item, textX, textY);
+          } 
 
           if(itemIndexOnPage < 2 && i < reportAvailableData.length -1) {
             const lineY = sectionYStart + sectionHeight;
@@ -1303,5 +1306,6 @@ export default function LPRPage() {
     
 
     
+
 
 
