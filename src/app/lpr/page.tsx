@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
 import {
   Upload,
@@ -104,6 +105,8 @@ export default function LPRPage() {
   const [isTimelineOpen, setIsTimelineOpen] = useState(false);
   const [hoveredDate, setHoveredDate] = useState<string | null>(null);
   const { logout } = useAuth();
+  const [isProcessingImages, setIsProcessingImages] = useState(false);
+  const [processingProgress, setProcessingProgress] = useState(0);
 
 
   useEffect(() => {
@@ -214,6 +217,27 @@ export default function LPRPage() {
     return processed;
   };
   
+  const processImages = async (dataToProcess: PlateData[]) => {
+    setIsProcessingImages(true);
+    setProcessingProgress(0);
+    const newImageErrors: Record<string, boolean> = {};
+    const totalImages = dataToProcess.length;
+
+    for (let i = 0; i < totalImages; i++) {
+        const item = dataToProcess[i];
+        try {
+            const response = await fetch(item["Image URL"], { method: 'HEAD', mode: 'no-cors' });
+            // Cannot check response.ok in no-cors mode, but this will pre-warm the cache.
+            // A more robust check would require a CORS proxy.
+        } catch (error) {
+            // This will likely catch network errors, not 404s in no-cors mode.
+            newImageErrors[item.id] = true;
+        }
+        setProcessingProgress(((i + 1) / totalImages) * 100);
+    }
+    setImageErrors(newImageErrors);
+    setIsProcessingImages(false);
+};
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -245,13 +269,14 @@ export default function LPRPage() {
         const formattedData = processData(jsonData, fileName);
         
         setData(formattedData);
+        processImages(formattedData); // Start processing images
         setFilter('all');
         setColorFilter('all');
         setSearchQuery('');
         setIsHeaderOpen(false);
         toast({
           title: "Sucesso",
-          description: `${formattedData.length} itens carregados com sucesso.`,
+          description: `${formattedData.length} itens carregados. Processando imagens...`,
         });
 
       } catch (error: any) {
@@ -477,9 +502,10 @@ export default function LPRPage() {
       const checkNewPage = (isHeaderNeeded: boolean) => {
         doc.addPage();
         addBackground();
-        yPosition = margin;
         if (isHeaderNeeded) {
             addHeader();
+        } else {
+             yPosition = margin;
         }
         return true; 
       };
@@ -628,7 +654,6 @@ export default function LPRPage() {
   
       if (reportUnavailableData.length > 0) {
         checkNewPage(true);
-        yPosition = margin + 20;
         
         doc.setFontSize(headerSize).setFont(font.name, 'bold');
         doc.text(`Imagens Indisponíveis (${reportUnavailableData.length})`, margin, yPosition);
@@ -646,7 +671,6 @@ export default function LPRPage() {
         for (const plate in groupedByPlate) {
           if (yPosition + 10 > pageHeight - margin) {
               checkNewPage(true);
-              yPosition = margin + 20;
               doc.setFontSize(headerSize).setFont(font.name, 'bold');
               doc.text(`Imagens Indisponíveis (continuação)`, margin, yPosition);
               yPosition += lineHeight.large;
@@ -660,7 +684,6 @@ export default function LPRPage() {
           for (const item of items) {
              if (yPosition + 5 > pageHeight - margin) {
                 checkNewPage(true);
-                yPosition = margin + 20;
              }
              doc.setFontSize(smallSize).setFont(font.name, 'normal');
              const date = item["Detected At"] ? new Date(item["Detected At"]).toLocaleString('pt-BR') : 'Data desconhecida';
@@ -934,8 +957,20 @@ export default function LPRPage() {
           </CollapsibleContent>
         </Collapsible>
 
+        {isProcessingImages && (
+            <Card className="max-w-lg mx-auto my-8">
+                <CardHeader>
+                    <CardTitle>Processando Imagens</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                    <p className="text-sm text-muted-foreground">Verificando a disponibilidade das imagens. Isso pode levar um momento.</p>
+                    <Progress value={processingProgress} />
+                    <p className="text-sm font-medium text-center">{Math.round(processingProgress)}%</p>
+                </CardContent>
+            </Card>
+        )}
 
-        {data.length > 0 && (
+        {data.length > 0 && !isProcessingImages && (
           <div className="p-4 bg-muted/50 rounded-lg flex flex-col md:flex-row justify-center items-center gap-4 flex-wrap sticky top-4 z-10 border">
             <div className="relative w-full md:w-auto md:flex-grow max-w-sm">
               <Input 
@@ -1142,15 +1177,15 @@ export default function LPRPage() {
                     <p className="text-lg text-muted-foreground">Processando seu arquivo...</p>
                 </div>
                 )}
-                {!isLoading && data.length === 0 && (
+                {!isLoading && !isProcessingImages && data.length === 0 && (
                 <Card className="mt-6 text-center h-64 flex flex-col justify-center items-center border-dashed bg-muted/20">
                     <FileSpreadsheet className="h-16 w-16 text-muted-foreground mb-4" />
                     <h3 className="text-xl font-semibold">Nenhuma Imagem para Exibir</h3>
                     <p className="text-muted-foreground mt-2">Faça o upload de um arquivo para começar.</p>
                 </Card>
                 )}
-                {!isLoading && availableData.length > 0 && renderGrid(availableData)}
-                {!isLoading && data.length > 0 && availableData.length === 0 && unavailableData.length === 0 && (
+                {!isLoading && !isProcessingImages && availableData.length > 0 && renderGrid(availableData)}
+                {!isLoading && !isProcessingImages && data.length > 0 && availableData.length === 0 && unavailableData.length === 0 && (
                 <Card className="mt-6 text-center h-64 flex flex-col justify-center items-center border-dashed bg-muted/20">
                     <Search className="h-16 w-16 text-muted-foreground mb-4" />
                     <h3 className="text-xl font-semibold">Nenhum item encontrado</h3>
@@ -1158,7 +1193,7 @@ export default function LPRPage() {
                 </Card>
                 )}
                 
-                {unavailableData.length > 0 && (
+                {!isProcessingImages && unavailableData.length > 0 && (
                 <Collapsible className="mt-12">
                     <CollapsibleTrigger asChild>
                     <div className="flex items-center gap-2 cursor-pointer w-full border-b pb-2 mb-4 justify-center">
@@ -1306,6 +1341,7 @@ export default function LPRPage() {
     
 
     
+
 
 
 
