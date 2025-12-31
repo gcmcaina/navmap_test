@@ -396,7 +396,7 @@ export default function LPRPage() {
       try {
         const imageUrl = `${your_cloudflare_worker_url}?url=${encodeURIComponent(item['Image URL'])}`;
         const response = await fetch(imageUrl);
-        if (!response.ok) throw new Error(`Falha ao buscar imagem: ${item["Image URL"]}.`);
+        if (!response.ok) throw new Error(`Falha ao buscar imagem: ${item["Image URL"]}`);
         const blob = await response.blob();
         const filename = `${item["License Plate"] || 'sem-placa'}_${item.id}.jpg`;
         zip.file(filename, blob);
@@ -676,7 +676,9 @@ export default function LPRPage() {
       }
   
       if (reportUnavailableData.length > 0) {
-        checkNewPage(true, true);
+        if(reportAvailableData.length > 0) {
+            checkNewPage(true, true);
+        }
         
         doc.setFontSize(headerSize).setFont(font.name, 'bold');
         doc.text(`Imagens Indisponíveis (${reportUnavailableData.length})`, margin, yPosition);
