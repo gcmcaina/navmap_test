@@ -70,7 +70,7 @@ import { cn } from "@/lib/utils";
 import type { DateRange } from "react-day-picker";
 import { useAuth } from "@/hooks/use-auth";
 import { mercosulPlateBase64 } from "@/lib/mercosul-base64";
-import { feFontBase64 } from "@/lib/fe-font-base-64";
+import { feFontBase64 } from "@/lib/fe-font-base64";
 import { oldPlateBase64 } from "@/lib/oldplate";
 
 
@@ -455,7 +455,7 @@ export default function LPRPage() {
             item.preloadedImageUrl = dataUrl;
             reportAvailableData.push(item);
         } catch (e) {
-            console.error(`Erro ao buscar ${item['Image URL']}:`, e);
+            console.error(e);
             reportUnavailableData.push(item);
         }
     }
