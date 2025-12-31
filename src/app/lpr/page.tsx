@@ -69,7 +69,7 @@ import { cn } from "@/lib/utils";
 import type { DateRange } from "react-day-picker";
 import { useAuth } from "@/hooks/use-auth";
 import { mercosulPlateBase64 } from "@/lib/mercosul-base64";
-import { feFontBase64 } from "@/lib/fe-font-base-64";
+import { feFontBase64 } from "@/lib/fe-font-base64";
 import { oldPlateBase64 } from "@/lib/oldplate";
 
 
@@ -388,7 +388,8 @@ export default function LPRPage() {
     const zip = new JSZip();
     const your_cloudflare_worker_url = "https://imageproxy.gcmcaina.workers.dev/";
 
-    const imagePromises = availableData.map(async (item) => {
+    const imagePromises = sortedData.map(async (item) => {
+      if (imageErrors[item.id]) return;
       try {
         const imageUrl = `${your_cloudflare_worker_url}?url=${encodeURIComponent(item['Image URL'])}`;
         const response = await fetch(imageUrl);
@@ -438,25 +439,25 @@ export default function LPRPage() {
   
     const your_cloudflare_worker_url = "https://imageproxy.gcmcaina.workers.dev/";
     
-    await Promise.all(reportData.map(async (item) => {
-      try {
-        const imageUrl = `${your_cloudflare_worker_url}?url=${encodeURIComponent(item['Image URL'])}`;
-        const response = await fetch(imageUrl);
-        if (!response.ok) throw new Error('Falha ao buscar imagem.');
-        const blob = await response.blob();
-        const dataUrl = await new Promise<string>((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onloadend = () => resolve(reader.result as string);
-          reader.onerror = reject;
-          reader.readAsDataURL(blob);
-        });
-        item.preloadedImageUrl = dataUrl;
-        reportAvailableData.push(item);
-      } catch (e) {
-        console.error(`Erro ao buscar ${item['Image URL']}:`, e);
-        reportUnavailableData.push(item);
-      }
-    }));
+    for (const item of reportData) {
+        try {
+            const imageUrl = `${your_cloudflare_worker_url}?url=${encodeURIComponent(item['Image URL'])}`;
+            const response = await fetch(imageUrl);
+            if (!response.ok) throw new Error('Falha ao buscar imagem.');
+            const blob = await response.blob();
+            const dataUrl = await new Promise<string>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result as string);
+            reader.onerror = reject;
+            reader.readAsDataURL(blob);
+            });
+            item.preloadedImageUrl = dataUrl;
+            reportAvailableData.push(item);
+        } catch (e) {
+            console.error(`Erro ao buscar ${item['Image URL']}:`, e);
+            reportUnavailableData.push(item);
+        }
+    }
   
     reportAvailableData.sort((a, b) => new Date(b["Detected At"] || 0).getTime() - new Date(a["Detected At"] || 0).getTime());
     reportUnavailableData.sort((a, b) => new Date(b["Detected At"] || 0).getTime() - new Date(a["Detected At"] || 0).getTime());
@@ -1302,10 +1303,11 @@ export default function LPRPage() {
              <div className="flex-shrink-0 p-4 bg-muted/50 rounded-b-lg mt-2 space-y-2">
                 {selectedItem["License Plate"] && (
                    <div 
-                    className="mx-auto h-20 w-80 rounded-md flex items-center justify-center shadow-md bg-center bg-no-repeat" 
+                    className="mx-auto h-20 w-80 rounded-md flex items-center justify-center shadow-md bg-no-repeat" 
                     style={{ 
                       backgroundImage: `url(${isMercosulPlate(selectedItem["License Plate"]) ? mercosulPlateBase64 : oldPlateBase64})`,
-                      backgroundSize: '100% 100%'
+                      backgroundSize: '100% 100%',
+                      backgroundPosition: 'center',
                     }}
                   >
                     <p 
