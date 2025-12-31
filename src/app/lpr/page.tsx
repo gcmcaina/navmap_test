@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useMemo, useRef, useEffect } from "react";
@@ -70,10 +69,20 @@ import { cn } from "@/lib/utils";
 import type { DateRange } from "react-day-picker";
 import { useAuth } from "@/hooks/use-auth";
 import { mercosulPlateBase64 } from "@/lib/mercosul-base64";
-import { feFontBase64 } from "@/lib/fe-font-base64";
+import { feFontBase64 } from "@/lib/fe-font-base-64";
+import { oldPlateBase64 } from "@/lib/oldplate";
 
 
 const VehicleMap = dynamic(() => import('@/components/map/vehicle-map'), { ssr: false });
+
+const isMercosulPlate = (plate: string): boolean => {
+  if (!plate || plate.length !== 7) {
+    return false;
+  }
+  // Padrão Mercosul: LLLNLNN (L=Letra, N=Número)
+  const mercosulRegex = /^[A-Z]{3}[0-9][A-Z][0-9]{2}$/;
+  return mercosulRegex.test(plate.toUpperCase());
+};
 
 
 export default function LPRPage() {
@@ -556,9 +565,9 @@ export default function LPRPage() {
           } else {
              doc.setFont('Courier', 'bold');
           }
-          doc.setFontSize(28);
+          doc.setFontSize(56);
           doc.setTextColor(0, 0, 0);
-          doc.text(plate, pageWidth / 2, yPosition - 13, { align: 'center' });
+          doc.text(plate, pageWidth / 2, yPosition - 10, { align: 'center' });
         }
         
         yPosition += 10;
@@ -1292,16 +1301,20 @@ export default function LPRPage() {
             </div>
              <div className="flex-shrink-0 p-4 bg-muted/50 rounded-b-lg mt-2 space-y-2">
                 {selectedItem["License Plate"] && (
-                  <div 
-                    className="mx-auto h-16 w-64 rounded-md flex items-center justify-center shadow-md" 
+                   <div 
+                    className="mx-auto h-20 w-80 rounded-md flex items-center justify-center shadow-md bg-center bg-no-repeat" 
                     style={{ 
-                      backgroundImage: `url(${mercosulPlateBase64})`,
-                      backgroundSize: '100% 100%',
-                      backgroundPosition: 'center',
-                      backgroundRepeat: 'no-repeat'
+                      backgroundImage: `url(${isMercosulPlate(selectedItem["License Plate"]) ? mercosulPlateBase64 : oldPlateBase64})`,
+                      backgroundSize: '100% 100%'
                     }}
                   >
-                    <p className="text-black text-4xl font-bold tracking-widest" style={{ fontFamily: feFontBase64 ? 'FE-Font' : 'monospace' }}>
+                    <p 
+                      className="text-black text-[52px] font-bold tracking-[-2px]" 
+                      style={{ 
+                        fontFamily: feFontBase64 ? 'FE-Font' : 'monospace',
+                        color: isMercosulPlate(selectedItem["License Plate"]) ? '#000000' : '#333333',
+                      }}
+                    >
                       {selectedItem["License Plate"]}
                     </p>
                   </div>
@@ -1335,13 +1348,3 @@ export default function LPRPage() {
     </div>
   );
 }
-
-    
-
-    
-
-    
-
-
-
-
