@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useMemo, useRef, useEffect } from "react";
@@ -69,7 +70,7 @@ import { cn } from "@/lib/utils";
 import type { DateRange } from "react-day-picker";
 import { useAuth } from "@/hooks/use-auth";
 import { mercosulPlateBase64 } from "@/lib/mercosul-base64";
-import { feFontBase64 } from "@/lib/fe-font-base64";
+import { feFontBase64 } from "@/lib/fe-font-base-64";
 import { oldPlateBase64 } from "@/lib/oldplate";
 
 
@@ -443,7 +444,7 @@ export default function LPRPage() {
         try {
             const imageUrl = `${your_cloudflare_worker_url}?url=${encodeURIComponent(item['Image URL'])}`;
             const response = await fetch(imageUrl);
-            if (!response.ok) throw new Error('Falha ao buscar imagem.');
+            if (!response.ok) throw new Error(`Falha ao buscar imagem: ${item['Image URL']}.`);
             const blob = await response.blob();
             const dataUrl = await new Promise<string>((resolve, reject) => {
             const reader = new FileReader();
@@ -1350,3 +1351,5 @@ export default function LPRPage() {
     </div>
   );
 }
+
+    
