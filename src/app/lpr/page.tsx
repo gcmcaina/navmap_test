@@ -505,9 +505,7 @@ export default function LPRPage() {
           doc.addPage();
           pageNumber++;
           addBackground();
-          if (pageNumber === 1) { // This condition will now only be true for the very first page implicitly. Let's make it explicit.
-              addHeader();
-          } else {
+          if (pageNumber > 1) {
               yPosition = margin;
           }
           return true;
@@ -1082,7 +1080,7 @@ export default function LPRPage() {
                           />
                         </PopoverContent>
                       </Popover>
-                      <Button variant="ghost" size="sm" onClick={()={() => setFilterDate(undefined)} disabled={!filterDate}>
+                      <Button variant="ghost" size="sm" onClick={() => setFilterDate(undefined)} disabled={!filterDate}>
                         Limpar
                       </Button>
                     </div>
