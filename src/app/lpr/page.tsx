@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useMemo, useRef, useEffect } from "react";
@@ -577,7 +576,7 @@ export default function LPRPage() {
              doc.setFont('Courier', 'bold');
           }
           doc.setFontSize(56);
-          doc.setTextColor(isMercosul ? 0 : 51, isMercosul ? 0 : 51, isMercosul ? 0 : 51);
+          doc.setTextColor(isMercosul ? 0 : 0, isMercosul ? 0 : 0, isMercosul ? 0 : 0);
           doc.text(plate, pageWidth / 2, yPosition - 10, { align: 'center' });
         }
         
@@ -617,7 +616,7 @@ export default function LPRPage() {
         for (let i = 0; i < reportAvailableData.length; i++) {
           const item = reportAvailableData[i];
           
-          if (itemsOnPage >= 3) {
+          if (i > 0 && i % 3 === 0) {
             checkNewPage(true, true);
             itemsOnPage = 0;
           }
@@ -676,9 +675,7 @@ export default function LPRPage() {
       }
   
       if (reportUnavailableData.length > 0) {
-        if(reportAvailableData.length > 0) {
-            checkNewPage(true, true);
-        }
+        checkNewPage(true, true);
         
         doc.setFontSize(headerSize).setFont(font.name, 'bold');
         doc.text(`Imagens Indisponíveis (${reportUnavailableData.length})`, margin, yPosition);
@@ -913,12 +910,6 @@ export default function LPRPage() {
   
   return (
     <div className="min-h-screen bg-background text-foreground">
-      <style>{`
-        @font-face {
-          font-family: 'FE-Font';
-          src: url('data:font/ttf;base64,${feFontBase64}') format('truetype');
-        }
-      `}</style>
       <div className="container mx-auto p-4 sm:p-6 lg:p-8">
         <Collapsible
           open={isHeaderOpen}
@@ -1317,24 +1308,9 @@ export default function LPRPage() {
             </div>
              <div className="flex-shrink-0 p-4 bg-muted/50 rounded-b-lg mt-2 space-y-2">
                 {selectedItem["License Plate"] && (
-                   <div 
-                    className="mx-auto h-20 w-80 rounded-md flex items-center justify-center shadow-md bg-no-repeat" 
-                    style={{ 
-                      backgroundImage: `url(${isMercosulPlate(selectedItem["License Plate"]) ? mercosulPlateBase64 : oldPlateBase64})`,
-                      backgroundSize: '100% 100%',
-                      backgroundPosition: 'center',
-                    }}
-                  >
-                    <p 
-                      className="text-black text-[52px] font-bold tracking-[-2px]" 
-                      style={{ 
-                        fontFamily: feFontBase64 ? 'FE-Font' : 'monospace',
-                        color: isMercosulPlate(selectedItem["License Plate"]) ? '#000000' : '#333333',
-                      }}
-                    >
-                      {selectedItem["License Plate"]}
+                    <p className="text-center text-4xl font-bold text-white tracking-wider" style={{ textShadow: '2px 2px 4px rgba(0,0,0,0.8)' }}>
+                        {selectedItem["License Plate"]}
                     </p>
-                  </div>
                 )}
                 <div className="text-sm text-muted-foreground grid grid-cols-2 gap-x-4 gap-y-1 mt-2">
                    {selectedItem.Marca && (
@@ -1365,5 +1341,3 @@ export default function LPRPage() {
     </div>
   );
 }
-
-    
