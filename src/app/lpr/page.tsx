@@ -68,22 +68,9 @@ import { TimelineSidebar } from "@/components/timeline/timeline-sidebar";
 import { cn } from "@/lib/utils";
 import type { DateRange } from "react-day-picker";
 import { useAuth } from "@/hooks/use-auth";
-import { mercosulPlateBase64 } from "@/lib/mercosul-base64";
-import { feFontBase64 } from "@/lib/fe-font-base64";
-import { oldPlateBase64 } from "@/lib/oldplate";
 
 
 const VehicleMap = dynamic(() => import('@/components/map/vehicle-map'), { ssr: false });
-
-const isMercosulPlate = (plate: string): boolean => {
-  if (!plate || plate.length !== 7) {
-    return false;
-  }
-  // Padrão Mercosul: LLLNLNN (L=Letra, N=Número)
-  const mercosulRegex = /^[A-Z]{3}[0-9][A-Z][0-9]{2}$/;
-  return mercosulRegex.test(plate.toUpperCase());
-};
-
 
 export default function LPRPage() {
   const [data, setData] = useState<PlateData[]>([]);
@@ -395,7 +382,7 @@ export default function LPRPage() {
       try {
         const imageUrl = `${your_cloudflare_worker_url}?url=${encodeURIComponent(item['Image URL'])}`;
         const response = await fetch(imageUrl);
-        if (!response.ok) throw new Error(`Falha ao buscar imagem: ${item["Image URL"]}`);
+        if (!response.ok) throw new Error(`Falha ao buscar imagem: ${item["Image URL"]}.`);
         const blob = await response.blob();
         const filename = `${item["License Plate"] || 'sem-placa'}_${item.id}.jpg`;
         zip.file(filename, blob);
@@ -484,6 +471,7 @@ export default function LPRPage() {
         image,
       } = pdfLayoutConfig;
       let yPosition = margin;
+      let pageNumber = 1;
   
       const addBackground = () => {
         if (logoBase64 && !logoBase64.startsWith('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=')) {
@@ -511,12 +499,13 @@ export default function LPRPage() {
         yPosition += 20;
       }
       
-      const checkNewPage = (isHeaderNeeded: boolean, force = false) => {
+      const checkNewPage = (force = false) => {
         const remainingSpace = pageHeight - margin - yPosition;
-        if (force || remainingSpace < 100) { // Keep a buffer, e.g. 100mm
+        if (force || remainingSpace < 100) { 
           doc.addPage();
+          pageNumber++;
           addBackground();
-          if (isHeaderNeeded) {
+          if (pageNumber === 1) { // This condition will now only be true for the very first page implicitly. Let's make it explicit.
               addHeader();
           } else {
               yPosition = margin;
@@ -552,37 +541,15 @@ export default function LPRPage() {
       }
       
       addBackground();
-      addHeader();
+      if (pageNumber === 1) {
+        addHeader();
+      }
   
       if (reportAvailableData.length === 1 && reportUnavailableData.length === 0) {
         const item = reportAvailableData[0];
-        const plate = item["License Plate"] || "N/A";
-  
-        const isMercosul = isMercosulPlate(plate);
-        const plateBg = isMercosul ? mercosulPlateBase64 : oldPlateBase64;
-  
-        if (plateBg.length > 100) {
-          const plateImgWidth = 100;
-          const plateImgHeight = 30;
-          const plateX = (pageWidth - plateImgWidth) / 2;
-          doc.addImage(plateBg, 'PNG', plateX, yPosition, plateImgWidth, plateImgHeight);
-          yPosition += plateImgHeight;
-  
-          if (feFontBase64) {
-            doc.addFileToVFS('fe-font.ttf', feFontBase64);
-            doc.addFont('fe-font.ttf', 'FE-Font', 'normal');
-            doc.setFont('FE-Font');
-          } else {
-             doc.setFont('Courier', 'bold');
-          }
-          doc.setFontSize(56);
-          doc.setTextColor(isMercosul ? 0 : 0, isMercosul ? 0 : 0, isMercosul ? 0 : 0);
-          doc.text(plate, pageWidth / 2, yPosition - 10, { align: 'center' });
-        }
-        
         yPosition += 10;
         doc.setFont(font.name, 'normal');
-        if (yPosition + 110 > pageHeight - margin) checkNewPage(false, true);
+        if (yPosition + 110 > pageHeight - margin) checkNewPage(true);
   
         try {
           if (!item.preloadedImageUrl) throw new Error('Imagem pré-carregada não encontrada.');
@@ -593,7 +560,10 @@ export default function LPRPage() {
   
           const imgMaxHeight = 100;
           const aspectRatio = img.width / img.height;
-          const imgWidth = imgMaxHeight * aspectRatio;
+          let imgWidth = imgMaxHeight * aspectRatio;
+          if (imgWidth > pageWidth - margin * 2) {
+            imgWidth = pageWidth - margin * 2;
+          }
           const imgX = (pageWidth - imgWidth) / 2;
           
           doc.addImage(item.preloadedImageUrl, 'JPEG', imgX, yPosition, imgWidth, imgMaxHeight);
@@ -604,12 +574,32 @@ export default function LPRPage() {
           doc.text('Imagem indisponível', pageWidth / 2, yPosition + 50, {align: 'center'});
           yPosition += 110;
         }
+        
+        if (yPosition + 50 > pageHeight - margin) checkNewPage(true);
+
+        const textX = margin;
+        const textY = yPosition;
+        doc.setFontSize(bodySize).setFont(font.name, 'bold');
+        doc.text(item["License Plate"] || 'N/A', textX, textY);
   
-        if (yPosition + 50 > pageHeight - margin) checkNewPage(false, true);
-        addTextInfo(item, margin, yPosition);
-  
+        let infoY = textY + lineHeight.large;
+        doc.setFont(font.name, 'normal');
+        doc.setFontSize(smallSize);
+         if (item.Marca && item.Marca !== "Marca não Informada") {
+            doc.text(`Veículo: ${item.Marca} ${item.Model || ''}`, textX, infoY);
+            infoY += lineHeight.small;
+        }
+        if (item['Detected At']) {
+            doc.text(`Data/Hora: ${new Date(item['Detected At']).toLocaleString('pt-BR')}`, textX, infoY);
+            infoY += lineHeight.small;
+        }
+        if (item.CameraAddress) {
+            const locationLines = doc.splitTextToSize(`Localização: ${item.CameraAddress}`, pageWidth - textX - margin);
+            doc.text(locationLines, textX, infoY);
+        }
+
       } else { 
-        const availablePageHeight = pageHeight - (margin * 2) - 20; // -20 for header
+        const availablePageHeight = pageHeight - (margin * 2) - (pageNumber === 1 ? 20 : 0);
         const sectionHeight = availablePageHeight / 3;
         let itemsOnPage = 0;
 
@@ -617,7 +607,7 @@ export default function LPRPage() {
           const item = reportAvailableData[i];
           
           if (i > 0 && i % 3 === 0) {
-            checkNewPage(true, true);
+            checkNewPage(true);
             itemsOnPage = 0;
           }
   
@@ -648,8 +638,7 @@ export default function LPRPage() {
             const imageY = sectionYStart + (sectionHeight - imgHeight) / 2;
             doc.addImage(item.preloadedImageUrl, 'JPEG', margin, imageY, imgWidth, imgHeight);
             
-            const textY = imageY;
-            let finalY = addTextInfo(item, textX, textY);
+            let finalY = addTextInfo(item, textX, imageY);
             doc.setTextColor(pdfLayoutConfig.linkColor.r, pdfLayoutConfig.linkColor.g, pdfLayoutConfig.linkColor.b);
             doc.textWithLink('Ver Imagem', textX, finalY, { url: item['Image URL'] });
             doc.setTextColor(0, 0, 0);
@@ -675,7 +664,7 @@ export default function LPRPage() {
       }
   
       if (reportUnavailableData.length > 0) {
-        checkNewPage(true, true);
+        checkNewPage(true);
         
         doc.setFontSize(headerSize).setFont(font.name, 'bold');
         doc.text(`Imagens Indisponíveis (${reportUnavailableData.length})`, margin, yPosition);
@@ -692,10 +681,12 @@ export default function LPRPage() {
   
         for (const plate in groupedByPlate) {
           if (yPosition + 10 > pageHeight - margin) {
-              checkNewPage(true, true);
+              checkNewPage(false);
               doc.setFontSize(headerSize).setFont(font.name, 'bold');
-              doc.text(`Imagens Indisponíveis (continuação)`, margin, yPosition);
-              yPosition += lineHeight.large;
+              if (pageNumber > 1) {
+                doc.text(`Imagens Indisponíveis (continuação)`, margin, yPosition);
+                yPosition += lineHeight.large;
+              }
           }
           doc.setFontSize(bodySize).setFont(font.name, 'bold');
           doc.text(plate, margin, yPosition);
@@ -705,7 +696,7 @@ export default function LPRPage() {
   
           for (const item of items) {
              if (yPosition + 5 > pageHeight - margin) {
-                checkNewPage(true, false);
+                checkNewPage(false);
              }
              doc.setFontSize(smallSize).setFont(font.name, 'normal');
              const date = item["Detected At"] ? new Date(item["Detected At"]).toLocaleString('pt-BR') : 'Data desconhecida';
@@ -866,7 +857,7 @@ export default function LPRPage() {
                 </div>
               ) : (
                 <Image
-                  src={item["Image URL"]}
+                  src={`${"https://imageproxy.gcmcaina.workers.dev/"}?url=${encodeURIComponent(item['Image URL'])}`}
                   alt={item["License Plate"] || 'Imagem do Veículo'}
                   fill
                   style={{ objectFit: "cover" }}
@@ -1091,7 +1082,7 @@ export default function LPRPage() {
                           />
                         </PopoverContent>
                       </Popover>
-                      <Button variant="ghost" size="sm" onClick={() => setFilterDate(undefined)} disabled={!filterDate}>
+                      <Button variant="ghost" size="sm" onClick={()={() => setFilterDate(undefined)} disabled={!filterDate}>
                         Limpar
                       </Button>
                     </div>
@@ -1271,7 +1262,7 @@ export default function LPRPage() {
             >
                 <Image
                     ref={imageRef}
-                    src={selectedItem["Image URL"]}
+                    src={`${"https://imageproxy.gcmcaina.workers.dev/"}?url=${encodeURIComponent(selectedItem['Image URL'])}`}
                     alt="Imagem selecionada"
                     width={1000}
                     height={1000}
@@ -1308,7 +1299,7 @@ export default function LPRPage() {
             </div>
              <div className="flex-shrink-0 p-4 bg-muted/50 rounded-b-lg mt-2 space-y-2">
                 {selectedItem["License Plate"] && (
-                    <p className="text-center text-4xl font-bold text-white tracking-wider" style={{ textShadow: '2px 2px 4px rgba(0,0,0,0.8)' }}>
+                    <p className="text-center text-2xl font-bold text-white tracking-wider" style={{ textShadow: '2px 2px 4px rgba(0,0,0,0.8)' }}>
                         {selectedItem["License Plate"]}
                     </p>
                 )}
