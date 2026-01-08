@@ -40,6 +40,7 @@ import {
   CalendarIcon,
   LogOut,
   MapPin,
+  SlidersHorizontal,
 } from "lucide-react";
 import {
   Collapsible,
@@ -69,9 +70,6 @@ import { TimelineSidebar } from "@/components/timeline/timeline-sidebar";
 import { cn } from "@/lib/utils";
 import type { DateRange } from "react-day-picker";
 import { useAuth } from "@/hooks/use-auth";
-import { mercosulPlateBase64 } from "@/lib/mercosul-base64";
-import { feFontBase64 } from "@/lib/fe-font-base64";
-import { oldPlateBase64 } from "@/lib/oldplate";
 
 
 const VehicleMap = dynamic(() => import('@/components/map/vehicle-map'), { ssr: false });
@@ -229,7 +227,7 @@ export default function LPRPage() {
             const imageUrl = `${your_cloudflare_worker_url}?url=${encodeURIComponent(item['Image URL'])}`;
             const response = await fetch(imageUrl, { method: 'HEAD' });
             if (!response.ok) {
-              throw new Error('Image not accessible');
+              throw new Error(`Falha ao buscar imagem: ${item['Image URL']}.`);
             }
         } catch (error) {
             newImageErrors[item.id] = true;
@@ -309,24 +307,19 @@ export default function LPRPage() {
     setPosition({ x: 0, y: 0 });
   };
   
-  const handleWheel = (e: React.WheelEvent<HTMLDivElement>) => {
+  const handleWheel = (e: React.WheelEvent) => {
     e.preventDefault();
-  
-    const scaleAmount = 0.1;
-    const newZoom = zoom * (1 - Math.sign(e.deltaY) * scaleAmount);
+    const scaleAmount = -0.001;
+    const newZoom = zoom + e.deltaY * scaleAmount;
     const clampedZoom = Math.max(0.5, Math.min(newZoom, 5));
     
-    const rect = e.currentTarget.getBoundingClientRect();
+    const target = e.currentTarget as HTMLElement;
+    const rect = target.getBoundingClientRect();
     const mouseX = e.clientX - rect.left;
     const mouseY = e.clientY - rect.top;
-    
-    // Ponto no qual o zoom foi aplicado (em porcentagem da imagem)
-    const x = (mouseX - position.x) / (rect.width * zoom);
-    const y = (mouseY - position.y) / (rect.height * zoom);
-  
-    // Nova posição para manter o ponto sob o cursor
-    const newPosX = mouseX - x * rect.width * clampedZoom;
-    const newPosY = mouseY - y * rect.height * clampedZoom;
+
+    const newPosX = mouseX - (mouseX - position.x) * (clampedZoom / zoom);
+    const newPosY = mouseY - (mouseY - position.y) * (clampedZoom / zoom);
   
     setZoom(clampedZoom);
     setPosition({ x: newPosX, y: newPosY });
@@ -518,7 +511,7 @@ export default function LPRPage() {
         return false; 
       };
   
-      const addTextInfo = (item: PlateData, x: number, y: number) => {
+      const addTextInfo = (x: number, y: number, item: PlateData) => {
         let textY = y;
         doc.setFontSize(bodySize).setFont(font.name, 'bold');
         doc.text(item["License Plate"] || 'N/A', x, textY);
@@ -641,7 +634,7 @@ export default function LPRPage() {
             const imageY = sectionYStart + (sectionHeight - imgHeight) / 2;
             doc.addImage(item.preloadedImageUrl, 'JPEG', margin, imageY, imgWidth, imgHeight);
             
-            let finalY = addTextInfo(item, textX, imageY); // Alinhado com a imagem
+            let finalY = addTextInfo(textX, imageY, item); // Alinhado com a imagem
             doc.setTextColor(pdfLayoutConfig.linkColor.r, pdfLayoutConfig.linkColor.g, pdfLayoutConfig.linkColor.b);
             doc.textWithLink('Ver Imagem', textX, finalY, { url: item['Image URL'] });
             doc.setTextColor(0, 0, 0);
@@ -653,7 +646,7 @@ export default function LPRPage() {
             doc.text('Imagem indisponível', margin + 40, textYPos, { align: 'center' });
             
             const textY = textYPos - (lineHeight.large + (2 * lineHeight.small)) / 2;
-            addTextInfo(item, textX, textY);
+            addTextInfo(textX, textY, item);
           } 
           
           itemsOnPage++;
@@ -837,12 +830,6 @@ export default function LPRPage() {
       window.removeEventListener("keydown", handleKeyDown);
     };
   }, [selectedItem, availableData]);
-  
-  const isMercosulPlate = (plate: string): boolean => {
-    if (!plate) return false;
-    const mercosulRegex = /^[A-Z]{3}\d[A-Z]\d{2}$/;
-    return mercosulRegex.test(plate.toUpperCase());
-  };
 
   const renderGrid = (items: PlateData[], isUnavailable = false) => (
     <div className={`grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4 transition-all duration-300 ${hoveredDate ? 'blur-sm brightness-50' : ''}`}>
@@ -987,21 +974,22 @@ export default function LPRPage() {
         )}
 
         {data.length > 0 && !isProcessingImages && (
-          <div className="p-4 bg-muted/50 rounded-lg flex flex-col md:flex-row justify-center items-center gap-4 flex-wrap sticky top-4 z-10 border">
-            <div className="relative w-full md:w-auto md:flex-grow max-w-sm">
-              <Input 
-                placeholder="Pesquisar por placa, marca ou modelo..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10 h-9"
-                aria-label="Pesquisa global"
-              />
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-            </div>
-            <div className="flex gap-2">
-               <DropdownMenu>
+          <div className="p-2 bg-muted/50 rounded-lg flex flex-col md:flex-row justify-between items-center gap-2 sticky top-4 z-10 border">
+            {/* Seção de Filtros */}
+            <div className="flex flex-col md:flex-row items-center gap-2 w-full md:w-auto">
+              <div className="relative w-full md:w-auto">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                <Input 
+                  placeholder="Pesquisar..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-10 h-9 w-full md:w-[200px] lg:w-[250px]"
+                  aria-label="Pesquisa global"
+                />
+              </div>
+              <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="outline" size="sm" className="w-[120px] justify-start">
+                    <Button variant="outline" size="sm" className="w-full md:w-[120px] justify-start">
                       {filter === 'all' && <><List className="mr-2 h-4 w-4" /> Todos</>}
                       {filter === 'Carro' && <><Car className="mr-2 h-4 w-4" /> Carros</>}
                       {filter === 'Moto' && <><Bike className="mr-2 h-4 w-4" /> Motos</>}
@@ -1030,7 +1018,7 @@ export default function LPRPage() {
                 {availableColors.length > 2 && (
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <Button variant="outline" size="sm" className="w-[120px] justify-start capitalize">
+                      <Button variant="outline" size="sm" className="w-full md:w-auto justify-start capitalize">
                         <Palette className="mr-2 h-4 w-4" />
                         {colorFilter === 'all' ? 'Cores' : colorFilter}
                       </Button>
@@ -1045,127 +1033,127 @@ export default function LPRPage() {
                     </DropdownMenuContent>
                   </DropdownMenu>
                 )}
-            </div>
-            <Collapsible className="w-full md:w-auto">
-              <CollapsibleTrigger asChild>
-                <Button variant="outline" size="sm">Filtros Avançados <ChevronDown className="ml-2 h-4 w-4"/></Button>
-              </CollapsibleTrigger>
-              <CollapsibleContent>
-                <div className="mt-4 md:absolute md:mt-2 md:bg-card md:p-4 md:rounded-lg md:shadow-lg md:border flex flex-col md:flex-row gap-4 items-center">
-                    <div className="flex gap-2 items-center">
-                       <Popover>
-                        <PopoverTrigger asChild>
-                          <Button
-                            id="date"
-                            variant={"outline"}
-                             size="sm"
-                            className={cn(
-                              "w-[260px] justify-start text-left font-normal",
-                              !filterDate && "text-muted-foreground"
-                            )}
-                          >
-                            <CalendarIcon className="mr-2 h-4 w-4" />
-                            {filterDate?.from ? (
-                              filterDate.to ? (
-                                <>
-                                  {format(filterDate.from, "LLL dd, y")} -{" "}
-                                  {format(filterDate.to, "LLL dd, y")}
-                                </>
-                              ) : (
-                                format(filterDate.from, "LLL dd, y")
-                              )
-                            ) : (
-                              <span>Selecione um período</span>
-                            )}
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0" align="start">
-                          <Calendar
-                            initialFocus
-                            mode="range"
-                            defaultMonth={filterDate?.from}
-                            selected={filterDate}
-                            onSelect={setFilterDate}
-                            numberOfMonths={2}
-                            locale={ptBR}
-                          />
-                        </PopoverContent>
-                      </Popover>
-                      <Button variant="ghost" size="sm" onClick={() => setFilterDate(undefined)} disabled={!filterDate}>
-                        Limpar
-                      </Button>
-                    </div>
-                    <div className="flex gap-2 items-center">
-                      <Clock className="w-5 h-5 text-muted-foreground" />
-                      <div className="grid gap-1">
-                          <Label htmlFor="start-time" className="text-xs">Início</Label>
-                          <Input 
-                          id="start-time"
-                          type="time"
-                          value={startTime}
-                          onChange={(e) => setStartTime(e.target.value)}
-                          className="w-24"
-                          />
-                      </div>
-                      <div className="grid gap-1">
-                          <Label htmlFor="end-time" className="text-xs">Fim</Label>
-                          <Input 
-                          id="end-time"
-                          type="time"
-                          value={endTime}
-                          onChange={(e) => setEndTime(e.target.value)}
-                          className="w-24"
-                          />
-                      </div>
-                    </div>
-                </div>
-              </CollapsibleContent>
-            </Collapsible>
-             <Button onClick={handleDownloadAll} size="sm" variant="outline" disabled={isDownloading || availableData.length === 0}>
-                {isDownloading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileArchive className="mr-2 h-4 w-4" />}
-                {isDownloading ? 'Baixando...' : `Baixar Imagens`}
-              </Button>
-              <Collapsible className="w-full md:w-auto">
-                <CollapsibleTrigger asChild>
-                    <Button variant="outline" size="sm">
-                        <FileText className="mr-2 h-4 w-4" /> Gerar Relatório
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" size="sm" className="w-full md:w-auto">
+                      <SlidersHorizontal className="mr-2 h-4 w-4" />
+                      Filtros
                     </Button>
-                </CollapsibleTrigger>
-                 <CollapsibleContent>
-                    <div className="mt-4 md:absolute md:mt-2 md:bg-card md:p-4 md:rounded-lg md:shadow-lg md:border flex flex-col md:flex-row gap-2 items-center">
-                        <div className="grid gap-1">
-                            <Label htmlFor="report-filename" className="text-xs">Nome do Relatório</Label>
-                            <Input
-                            id="report-filename"
-                            type="text"
-                            value={reportFilename}
-                            onChange={(e) => setReportFilename(e.target.value)}
-                            className="w-40 h-9"
-                            placeholder="relatorio_lpr"
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-4" align="start">
+                    <div className="space-y-4">
+                      <div className="flex gap-2 items-center">
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <Button
+                              id="date"
+                              variant={"outline"}
+                              size="sm"
+                              className={cn(
+                                "w-full sm:w-[260px] justify-start text-left font-normal",
+                                !filterDate && "text-muted-foreground"
+                              )}
+                            >
+                              <CalendarIcon className="mr-2 h-4 w-4" />
+                              {filterDate?.from ? (
+                                filterDate.to ? (
+                                  <>
+                                    {format(filterDate.from, "LLL dd, y")} -{" "}
+                                    {format(filterDate.to, "LLL dd, y")}
+                                  </>
+                                ) : (
+                                  format(filterDate.from, "LLL dd, y")
+                                )
+                              ) : (
+                                <span>Selecione um período</span>
+                              )}
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-auto p-0" align="start">
+                            <Calendar
+                              initialFocus
+                              mode="range"
+                              defaultMonth={filterDate?.from}
+                              selected={filterDate}
+                              onSelect={setFilterDate}
+                              numberOfMonths={2}
+                              locale={ptBR}
+                            />
+                          </PopoverContent>
+                        </Popover>
+                        <Button variant="ghost" size="icon" onClick={() => setFilterDate(undefined)} disabled={!filterDate}>
+                          <FilterX className="h-4 w-4" />
+                        </Button>
+                      </div>
+                      <div className="flex gap-2 items-center">
+                        <Clock className="w-5 h-5 text-muted-foreground" />
+                        <div className="grid gap-1 flex-1">
+                            <Label htmlFor="start-time" className="text-xs">Início</Label>
+                            <Input 
+                            id="start-time"
+                            type="time"
+                            value={startTime}
+                            onChange={(e) => setStartTime(e.target.value)}
+                            className="h-9"
                             />
                         </div>
-                        <Button onClick={handleGenerateReport} size="sm" disabled={isGeneratingReport || data.length === 0}>
-                            {isGeneratingReport ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
-                            {isGeneratingReport ? 'Gerando...' : 'Baixar PDF'}
-                        </Button>
+                        <div className="grid gap-1 flex-1">
+                            <Label htmlFor="end-time" className="text-xs">Fim</Label>
+                            <Input 
+                            id="end-time"
+                            type="time"
+                            value={endTime}
+                            onChange={(e) => setEndTime(e.target.value)}
+                            className="h-9"
+                            />
+                        </div>
+                      </div>
                     </div>
-                </CollapsibleContent>
-              </Collapsible>
-              <Button onClick={() => {
-                setMapKey(Date.now());
-                setIsMapOpen(true);
-                }} 
-                disabled={availableData.length === 0}
-                variant="outline"
-                size="sm"
-                >
+                  </PopoverContent>
+                </Popover>
+            </div>
+            
+            {/* Seção de Ações */}
+            <div className="flex items-center gap-2 w-full md:w-auto justify-end">
+              <Button onClick={() => { setIsMapOpen(true); setMapKey(Date.now());}} disabled={availableData.length === 0} variant="outline" size="sm" >
                 <MapIcon className="mr-2 h-4 w-4" />
-                Ver no Mapa
+                Mapa
               </Button>
               <Button variant="outline" size="sm" onClick={() => setIsTimelineOpen(!isTimelineOpen)}>
                 <PanelLeft className="mr-2 h-4 w-4" />
-                {isTimelineOpen ? "Ocultar Linha do Tempo" : "Mostrar Linha do Tempo"}
+                Linha do Tempo
               </Button>
+              <Button onClick={handleDownloadAll} size="sm" variant="outline" disabled={isDownloading || availableData.length === 0}>
+                {isDownloading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileArchive className="mr-2 h-4 w-4" />}
+                Baixar
+              </Button>
+              <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" size="sm">
+                      <FileText className="mr-2 h-4 w-4" /> Relatório
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-4" align="end">
+                    <div className="flex flex-col gap-2 items-center">
+                      <div className="grid gap-1 w-full">
+                          <Label htmlFor="report-filename" className="text-xs">Nome do Relatório</Label>
+                          <Input
+                          id="report-filename"
+                          type="text"
+                          value={reportFilename}
+                          onChange={(e) => setReportFilename(e.target.value)}
+                          className="h-9"
+                          placeholder="relatorio_lpr"
+                          />
+                      </div>
+                      <Button onClick={handleGenerateReport} size="sm" className="w-full" disabled={isGeneratingReport || data.length === 0}>
+                          {isGeneratingReport ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
+                          {isGeneratingReport ? 'Gerando...' : 'Baixar PDF'}
+                      </Button>
+                    </div>
+                  </PopoverContent>
+              </Popover>
+            </div>
           </div>
         )}
         
@@ -1276,7 +1264,7 @@ export default function LPRPage() {
                     className="w-auto h-auto max-w-full max-h-full object-contain rounded-lg transition-transform duration-200"
                     style={{
                       transform: `translate(${position.x}px, ${position.y}px) scale(${zoom})`,
-                      transformOrigin: '0 0',
+                      transformOrigin: 'top left',
                     }}
                     unoptimized
                     onError={(e) => {
@@ -1337,5 +1325,7 @@ export default function LPRPage() {
     </div>
   );
 }
+
+    
 
     
