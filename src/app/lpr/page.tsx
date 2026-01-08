@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useMemo, useRef, useEffect } from "react";
@@ -68,6 +69,9 @@ import { TimelineSidebar } from "@/components/timeline/timeline-sidebar";
 import { cn } from "@/lib/utils";
 import type { DateRange } from "react-day-picker";
 import { useAuth } from "@/hooks/use-auth";
+import { mercosulPlateBase64 } from "@/lib/mercosul-base64";
+import { feFontBase64 } from "@/lib/fe-font-base64";
+import { oldPlateBase64 } from "@/lib/oldplate";
 
 
 const VehicleMap = dynamic(() => import('@/components/map/vehicle-map'), { ssr: false });
@@ -88,7 +92,6 @@ export default function LPRPage() {
   const [zoom, setZoom] = useState(1);
   const [position, setPosition] = useState({ x: 0, y: 0 });
   const [isPanning, setIsPanning] = useState(false);
-  const imageRef = useRef<HTMLImageElement>(null);
   const startPosRef = useRef({ x: 0, y: 0 });
   const [imageErrors, setImageErrors] = useState<Record<string, boolean>>({});
   const [startTime, setStartTime] = useState('');
@@ -307,27 +310,23 @@ export default function LPRPage() {
   };
   
   const handleWheel = (e: React.WheelEvent<HTMLDivElement>) => {
-    if (!imageRef.current) return;
     e.preventDefault();
   
     const scaleAmount = 0.1;
-    const newZoom = zoom - (e.deltaY > 0 ? scaleAmount : -scaleAmount);
+    const newZoom = zoom * (1 - Math.sign(e.deltaY) * scaleAmount);
     const clampedZoom = Math.max(0.5, Math.min(newZoom, 5));
+    
+    const rect = e.currentTarget.getBoundingClientRect();
+    const mouseX = e.clientX - rect.left;
+    const mouseY = e.clientY - rect.top;
+    
+    // Ponto no qual o zoom foi aplicado (em porcentagem da imagem)
+    const x = (mouseX - position.x) / (rect.width * zoom);
+    const y = (mouseY - position.y) / (rect.height * zoom);
   
-    const image = imageRef.current;
-    const rect = image.getBoundingClientRect();
-  
-    const mouseX = e.clientX;
-    const mouseY = e.clientY;
-  
-    const imageX = mouseX - rect.left;
-    const imageY = mouseY - rect.top;
-  
-    const pointX = (imageX - position.x) / zoom;
-    const pointY = (imageY - position.y) / zoom;
-  
-    const newPosX = imageX - pointX * clampedZoom;
-    const newPosY = imageY - pointY * clampedZoom;
+    // Nova posição para manter o ponto sob o cursor
+    const newPosX = mouseX - x * rect.width * clampedZoom;
+    const newPosY = mouseY - y * rect.height * clampedZoom;
   
     setZoom(clampedZoom);
     setPosition({ x: newPosX, y: newPosY });
@@ -345,11 +344,12 @@ export default function LPRPage() {
   };
 
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (isPanning && imageRef.current) {
+    if (isPanning) {
       e.preventDefault();
-      const newX = e.clientX - startPosRef.current.x;
-      const newY = e.clientY - position.y;
-      setPosition({ x: newX, y: newY });
+      setPosition({
+        x: e.clientX - startPosRef.current.x,
+        y: e.clientY - startPosRef.current.y
+      });
     }
   };
 
@@ -501,12 +501,17 @@ export default function LPRPage() {
       
       const checkNewPage = (force = false) => {
         const remainingSpace = pageHeight - margin - yPosition;
-        if (force || remainingSpace < 100) { 
+        const requiredSpace = (reportAvailableData.length > 1) ? (pageHeight - (margin * 2)) / 3 : 100;
+        
+        if (force || remainingSpace < requiredSpace) { 
           doc.addPage();
           pageNumber++;
           addBackground();
-          if (pageNumber > 1) {
-              yPosition = margin;
+          yPosition = margin;
+          if (pageNumber > 1 && reportAvailableData.length > 1) {
+            // No header on subsequent pages for multi-item reports
+          } else if (pageNumber > 1) {
+            addHeader();
           }
           return true;
         }
@@ -576,11 +581,11 @@ export default function LPRPage() {
         if (yPosition + 50 > pageHeight - margin) checkNewPage(true);
 
         const textX = margin;
-        const textY = yPosition;
+        let infoY = yPosition;
         doc.setFontSize(bodySize).setFont(font.name, 'bold');
-        doc.text(item["License Plate"] || 'N/A', textX, textY);
+        doc.text(item["License Plate"] || 'N/A', textX, infoY);
   
-        let infoY = textY + lineHeight.large;
+        infoY += lineHeight.large;
         doc.setFont(font.name, 'normal');
         doc.setFontSize(smallSize);
          if (item.Marca && item.Marca !== "Marca não Informada") {
@@ -636,7 +641,7 @@ export default function LPRPage() {
             const imageY = sectionYStart + (sectionHeight - imgHeight) / 2;
             doc.addImage(item.preloadedImageUrl, 'JPEG', margin, imageY, imgWidth, imgHeight);
             
-            let finalY = addTextInfo(item, textX, imageY);
+            let finalY = addTextInfo(item, textX, imageY); // Alinhado com a imagem
             doc.setTextColor(pdfLayoutConfig.linkColor.r, pdfLayoutConfig.linkColor.g, pdfLayoutConfig.linkColor.b);
             doc.textWithLink('Ver Imagem', textX, finalY, { url: item['Image URL'] });
             doc.setTextColor(0, 0, 0);
@@ -679,9 +684,9 @@ export default function LPRPage() {
   
         for (const plate in groupedByPlate) {
           if (yPosition + 10 > pageHeight - margin) {
-              checkNewPage(false);
-              doc.setFontSize(headerSize).setFont(font.name, 'bold');
-              if (pageNumber > 1) {
+              checkNewPage(true);
+              if (pageNumber > 1) { // Apenas se for uma nova página
+                doc.setFontSize(headerSize).setFont(font.name, 'bold');
                 doc.text(`Imagens Indisponíveis (continuação)`, margin, yPosition);
                 yPosition += lineHeight.large;
               }
@@ -694,7 +699,7 @@ export default function LPRPage() {
   
           for (const item of items) {
              if (yPosition + 5 > pageHeight - margin) {
-                checkNewPage(false);
+                checkNewPage(true);
              }
              doc.setFontSize(smallSize).setFont(font.name, 'normal');
              const date = item["Detected At"] ? new Date(item["Detected At"]).toLocaleString('pt-BR') : 'Data desconhecida';
@@ -833,6 +838,12 @@ export default function LPRPage() {
     };
   }, [selectedItem, availableData]);
   
+  const isMercosulPlate = (plate: string): boolean => {
+    if (!plate) return false;
+    const mercosulRegex = /^[A-Z]{3}\d[A-Z]\d{2}$/;
+    return mercosulRegex.test(plate.toUpperCase());
+  };
+
   const renderGrid = (items: PlateData[], isUnavailable = false) => (
     <div className={`grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4 transition-all duration-300 ${hoveredDate ? 'blur-sm brightness-50' : ''}`}>
       {items.map((item) => {
@@ -1242,11 +1253,6 @@ export default function LPRPage() {
 
       <Dialog open={!!selectedItem} onOpenChange={(open) => !open && setSelectedItem(null)}>
         <DialogContent className="max-w-7xl w-full h-[95vh] p-2 flex flex-col"
-          onWheel={handleWheel}
-          onMouseDown={handleMouseDown}
-          onMouseMove={handleMouseMove}
-          onMouseUp={handleMouseUp}
-          onMouseLeave={handleMouseUp}
         >
           <DialogHeader className="p-4">
              <DialogTitle className="sr-only">Imagem Ampliada</DialogTitle>
@@ -1255,19 +1261,22 @@ export default function LPRPage() {
           {selectedItem && (
             <>
             <div
-              className="relative w-full flex-grow flex items-center justify-center overflow-hidden rounded-md"
-              style={{ cursor: isPanning ? 'grabbing' : (zoom > 1 ? 'grab' : 'default') }}
+              className="relative w-full flex-grow flex items-center justify-center overflow-hidden rounded-md cursor-grab active:cursor-grabbing"
+              onWheel={handleWheel}
+              onMouseDown={handleMouseDown}
+              onMouseMove={handleMouseMove}
+              onMouseUp={handleMouseUp}
+              onMouseLeave={handleMouseUp}
             >
                 <Image
-                    ref={imageRef}
                     src={`${"https://imageproxy.gcmcaina.workers.dev/"}?url=${encodeURIComponent(selectedItem['Image URL'])}`}
                     alt="Imagem selecionada"
                     width={1000}
                     height={1000}
                     className="w-auto h-auto max-w-full max-h-full object-contain rounded-lg transition-transform duration-200"
                     style={{
-                      transform: `scale(${zoom}) translate(${position.x}px, ${position.y}px)`,
-                      transformOrigin: 'top left',
+                      transform: `translate(${position.x}px, ${position.y}px) scale(${zoom})`,
+                      transformOrigin: '0 0',
                     }}
                     unoptimized
                     onError={(e) => {
@@ -1296,11 +1305,9 @@ export default function LPRPage() {
                 </Button>
             </div>
              <div className="flex-shrink-0 p-4 bg-muted/50 rounded-b-lg mt-2 space-y-2">
-                {selectedItem["License Plate"] && (
-                    <p className="text-center text-2xl font-bold text-white tracking-wider" style={{ textShadow: '2px 2px 4px rgba(0,0,0,0.8)' }}>
-                        {selectedItem["License Plate"]}
-                    </p>
-                )}
+                <p className="text-center text-2xl font-bold text-white tracking-wider" style={{ textShadow: '2px 2px 4px rgba(0,0,0,0.8)' }}>
+                    {selectedItem["License Plate"] || 'Placa não informada'}
+                </p>
                 <div className="text-sm text-muted-foreground grid grid-cols-2 gap-x-4 gap-y-1 mt-2">
                    {selectedItem.Marca && (
                      <p><span className="font-semibold">Marca:</span> {selectedItem.Marca}</p>
@@ -1330,3 +1337,5 @@ export default function LPRPage() {
     </div>
   );
 }
+
+    
