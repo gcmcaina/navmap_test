@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useMemo, useRef, useEffect } from "react";
+import { useState, useMemo, useRef, useEffect, useCallback } from "react";
 import * as XLSX from "xlsx";
 import Image from "next/image";
 import type { PlateData } from "@/types";
@@ -70,7 +70,6 @@ import { TimelineSidebar } from "@/components/timeline/timeline-sidebar";
 import { cn } from "@/lib/utils";
 import type { DateRange } from "react-day-picker";
 import { useAuth } from "@/hooks/use-auth";
-
 
 const VehicleMap = dynamic(() => import('@/components/map/vehicle-map'), { ssr: false });
 
@@ -214,29 +213,38 @@ export default function LPRPage() {
     return processed;
   };
   
-  const processImages = async (dataToProcess: PlateData[]) => {
-    setIsProcessingImages(true);
-    setProcessingProgress(0);
-    const newImageErrors: Record<string, boolean> = {};
-    const totalImages = dataToProcess.length;
-    const your_cloudflare_worker_url = "https://imageproxy.gcmcaina.workers.dev/";
+    const processImages = async (dataToProcess: PlateData[]) => {
+        setIsProcessingImages(true);
+        setProcessingProgress(0);
+        const newImageErrors: Record<string, boolean> = {};
+        const totalImages = dataToProcess.length;
+        let processedCount = 0;
+        const your_cloudflare_worker_url = "https://imageproxy.gcmcaina.workers.dev/";
 
-    for (let i = 0; i < totalImages; i++) {
-        const item = dataToProcess[i];
-        try {
-            const imageUrl = `${your_cloudflare_worker_url}?url=${encodeURIComponent(item['Image URL'])}`;
-            const response = await fetch(imageUrl, { method: 'HEAD' });
-            if (!response.ok) {
-              throw new Error(`Falha ao buscar imagem: ${item['Image URL']}.`);
+        const updateProgress = () => {
+            processedCount++;
+            setProcessingProgress((processedCount / totalImages) * 100);
+        };
+
+        const promises = dataToProcess.map(async (item) => {
+            try {
+                const imageUrl = `${your_cloudflare_worker_url}?url=${encodeURIComponent(item['Image URL'])}`;
+                const response = await fetch(imageUrl, { method: 'HEAD' });
+                if (!response.ok) {
+                    throw new Error(`Falha ao buscar imagem: ${item['Image URL']}`);
+                }
+            } catch (error) {
+                newImageErrors[item.id] = true;
+            } finally {
+                updateProgress();
             }
-        } catch (error) {
-            newImageErrors[item.id] = true;
-        }
-        setProcessingProgress(((i + 1) / totalImages) * 100);
-    }
-    setImageErrors(newImageErrors);
-    setIsProcessingImages(false);
-};
+        });
+
+        await Promise.all(promises);
+
+        setImageErrors(newImageErrors);
+        setIsProcessingImages(false);
+    };
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -307,23 +315,25 @@ export default function LPRPage() {
     setPosition({ x: 0, y: 0 });
   };
   
-  const handleWheel = (e: React.WheelEvent) => {
+  const handleWheel = (e: React.WheelEvent<HTMLDivElement>) => {
     e.preventDefault();
     const scaleAmount = -0.001;
-    const newZoom = zoom + e.deltaY * scaleAmount;
-    const clampedZoom = Math.max(0.5, Math.min(newZoom, 5));
-    
+    let newZoom = zoom + e.deltaY * scaleAmount;
+    newZoom = Math.max(0.5, Math.min(newZoom, 5));
+
     const target = e.currentTarget as HTMLElement;
     const rect = target.getBoundingClientRect();
+    
     const mouseX = e.clientX - rect.left;
     const mouseY = e.clientY - rect.top;
 
-    const newPosX = mouseX - (mouseX - position.x) * (clampedZoom / zoom);
-    const newPosY = mouseY - (mouseY - position.y) * (clampedZoom / zoom);
-  
-    setZoom(clampedZoom);
+    const newPosX = mouseX - (mouseX - position.x) * (newZoom / zoom);
+    const newPosY = mouseY - (mouseY - position.y) * (newZoom / zoom);
+
+    setZoom(newZoom);
     setPosition({ x: newPosX, y: newPosY });
   };
+
 
   const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
     if (zoom > 1) {
