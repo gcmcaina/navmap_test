@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useMemo, useRef, useEffect, useCallback } from "react";
+import { useState, useMemo, useRef, useEffect } from "react";
 import * as XLSX from "xlsx";
 import Image from "next/image";
 import type { PlateData } from "@/types";
@@ -22,14 +22,12 @@ import {
   Bike,
   List,
   Search,
-  Camera,
   Download,
   FileArchive,
   Clock,
   ChevronDown,
   Map as MapIcon,
   FileText,
-  ImageIcon,
   ImageOff,
   FilterX,
   PanelLeft,
@@ -38,7 +36,6 @@ import {
   Moon,
   Palette,
   CalendarIcon,
-  LogOut,
   MapPin,
   SlidersHorizontal,
 } from "lucide-react";
@@ -69,7 +66,6 @@ import { cameraCoordinates } from '@/lib/camera-coordinates';
 import { TimelineSidebar } from "@/components/timeline/timeline-sidebar";
 import { cn } from "@/lib/utils";
 import type { DateRange } from "react-day-picker";
-import { useAuth } from "@/hooks/use-auth";
 
 const VehicleMap = dynamic(() => import('@/components/map/vehicle-map'), { ssr: false });
 
@@ -100,10 +96,8 @@ export default function LPRPage() {
   const [polygonFilteredData, setPolygonFilteredData] = useState<PlateData[] | null>(null);
   const [isTimelineOpen, setIsTimelineOpen] = useState(false);
   const [hoveredDate, setHoveredDate] = useState<string | null>(null);
-  const { logout } = useAuth();
   const [isProcessingImages, setIsProcessingImages] = useState(false);
   const [processingProgress, setProcessingProgress] = useState(0);
-
 
   useEffect(() => {
     document.documentElement.classList.remove('dark', 'light');
@@ -181,10 +175,8 @@ export default function LPRPage() {
       };
     }).filter((item): item is PlateData => item !== null && !!item["Image URL"]);
   
-    // Second pass to fill in missing data
     const plateDataMap = new Map<string, { Marca?: string; Model?: string }>();
   
-    // First, find the best data for each plate
     processed.forEach(item => {
       const plate = item['License Plate'];
       if (plate) {
@@ -194,7 +186,6 @@ export default function LPRPage() {
       }
     });
   
-    // Then, apply the found data to items with missing info
     processed = processed.map(item => {
       const plate = item['License Plate'];
       if (plate && (!item.Marca || !item.Model)) {
@@ -213,38 +204,38 @@ export default function LPRPage() {
     return processed;
   };
   
-    const processImages = async (dataToProcess: PlateData[]) => {
-        setIsProcessingImages(true);
-        setProcessingProgress(0);
-        const newImageErrors: Record<string, boolean> = {};
-        const totalImages = dataToProcess.length;
-        let processedCount = 0;
-        const your_cloudflare_worker_url = "https://imageproxy.gcmcaina.workers.dev/";
+  const processImages = async (dataToProcess: PlateData[]) => {
+    setIsProcessingImages(true);
+    setProcessingProgress(0);
+    const newImageErrors: Record<string, boolean> = {};
+    const totalImages = dataToProcess.length;
+    let processedCount = 0;
+    const your_cloudflare_worker_url = "https://imageproxy.gcmcaina.workers.dev/";
 
-        const updateProgress = () => {
-            processedCount++;
-            setProcessingProgress((processedCount / totalImages) * 100);
-        };
-
-        const promises = dataToProcess.map(async (item) => {
-            try {
-                const imageUrl = `${your_cloudflare_worker_url}?url=${encodeURIComponent(item['Image URL'])}`;
-                const response = await fetch(imageUrl, { method: 'HEAD' });
-                if (!response.ok) {
-                    throw new Error(`Falha ao buscar imagem: ${item['Image URL']}`);
-                }
-            } catch (error) {
-                newImageErrors[item.id] = true;
-            } finally {
-                updateProgress();
-            }
-        });
-
-        await Promise.all(promises);
-
-        setImageErrors(newImageErrors);
-        setIsProcessingImages(false);
+    const updateProgress = () => {
+      processedCount++;
+      setProcessingProgress((processedCount / totalImages) * 100);
     };
+
+    const promises = dataToProcess.map(async (item) => {
+      try {
+        const imageUrl = `${your_cloudflare_worker_url}?url=${encodeURIComponent(item['Image URL'])}`;
+        const response = await fetch(imageUrl, { method: 'HEAD' });
+        if (!response.ok) {
+          throw new Error(`Falha ao buscar imagem: ${item['Image URL']}`);
+        }
+      } catch (error) {
+        newImageErrors[item.id] = true;
+      } finally {
+        updateProgress();
+      }
+    });
+
+    await Promise.all(promises);
+
+    setImageErrors(newImageErrors);
+    setIsProcessingImages(false);
+  };
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -276,7 +267,7 @@ export default function LPRPage() {
         const formattedData = processData(jsonData, fileName);
         
         setData(formattedData);
-        processImages(formattedData); // Start processing images
+        processImages(formattedData);
         setFilter('all');
         setColorFilter('all');
         setSearchQuery('');
@@ -317,23 +308,27 @@ export default function LPRPage() {
   
   const handleWheel = (e: React.WheelEvent<HTMLDivElement>) => {
     e.preventDefault();
-    const scaleAmount = -0.001;
-    let newZoom = zoom + e.deltaY * scaleAmount;
-    newZoom = Math.max(0.5, Math.min(newZoom, 5));
+    
+    const scaleAmount = 0.1;
+    const direction = e.deltaY > 0 ? -1 : 1;
+    const newZoom = Math.max(0.5, Math.min(zoom + direction * scaleAmount * zoom, 10));
 
-    const target = e.currentTarget as HTMLElement;
-    const rect = target.getBoundingClientRect();
+    if (newZoom === zoom) return;
+
+    const rect = e.currentTarget.getBoundingClientRect();
     
     const mouseX = e.clientX - rect.left;
     const mouseY = e.clientY - rect.top;
 
-    const newPosX = mouseX - (mouseX - position.x) * (newZoom / zoom);
-    const newPosY = mouseY - (mouseY - position.y) * (newZoom / zoom);
+    const relX = (mouseX - position.x) / zoom;
+    const relY = (mouseY - position.y) / zoom;
+
+    const newPosX = mouseX - relX * newZoom;
+    const newPosY = mouseY - relY * newZoom;
 
     setZoom(newZoom);
     setPosition({ x: newPosX, y: newPosY });
   };
-
 
   const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
     if (zoom > 1) {
@@ -511,11 +506,6 @@ export default function LPRPage() {
           pageNumber++;
           addBackground();
           yPosition = margin;
-          if (pageNumber > 1 && reportAvailableData.length > 1) {
-            // No header on subsequent pages for multi-item reports
-          } else if (pageNumber > 1) {
-            addHeader();
-          }
           return true;
         }
         return false; 
@@ -644,7 +634,7 @@ export default function LPRPage() {
             const imageY = sectionYStart + (sectionHeight - imgHeight) / 2;
             doc.addImage(item.preloadedImageUrl, 'JPEG', margin, imageY, imgWidth, imgHeight);
             
-            let finalY = addTextInfo(textX, imageY, item); // Alinhado com a imagem
+            let finalY = addTextInfo(textX, imageY, item);
             doc.setTextColor(pdfLayoutConfig.linkColor.r, pdfLayoutConfig.linkColor.g, pdfLayoutConfig.linkColor.b);
             doc.textWithLink('Ver Imagem', textX, finalY, { url: item['Image URL'] });
             doc.setTextColor(0, 0, 0);
@@ -688,11 +678,6 @@ export default function LPRPage() {
         for (const plate in groupedByPlate) {
           if (yPosition + 10 > pageHeight - margin) {
               checkNewPage(true);
-              if (pageNumber > 1) { // Apenas se for uma nova página
-                doc.setFontSize(headerSize).setFont(font.name, 'bold');
-                doc.text(`Imagens Indisponíveis (continuação)`, margin, yPosition);
-                yPosition += lineHeight.large;
-              }
           }
           doc.setFontSize(bodySize).setFont(font.name, 'bold');
           doc.text(plate, margin, yPosition);
@@ -926,10 +911,6 @@ export default function LPRPage() {
                   {theme === 'dark' ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
                   <span className="sr-only">Alternar tema</span>
                 </Button>
-                <Button onClick={logout} variant="outline" size="icon">
-                  <LogOut className="h-5 w-5" />
-                  <span className="sr-only">Sair</span>
-                </Button>
             </div>
           </div>
           <CollapsibleContent>
@@ -943,14 +924,13 @@ export default function LPRPage() {
                   </CardHeader>
                   <CardContent>
                     <div className="flex-grow">
-                      <Input
+                      <input
                         type="file"
                         id="file-upload"
                         className="hidden"
                         accept=".csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel, application/json"
                         onChange={handleFileUpload}
                         disabled={isLoading}
-                        aria-describedby="file-upload-help"
                       />
                       <Button asChild variant="outline" className="w-full justify-center text-left font-normal" disabled={isLoading}>
                         <Label htmlFor="file-upload" className="cursor-pointer flex items-center justify-center w-full h-full">
@@ -962,7 +942,7 @@ export default function LPRPage() {
                           {isLoading ? 'Processando...' : 'Selecione um arquivo'}
                         </Label>
                       </Button>
-                      <p id="file-upload-help" className="text-xs text-muted-foreground mt-2">Formatos suportados: .csv, .xlsx, .xls, .json</p>
+                      <p className="text-xs text-muted-foreground mt-2">Formatos suportados: .csv, .xlsx, .xls, .json</p>
                     </div>
                   </CardContent>
                 </Card>
@@ -985,7 +965,6 @@ export default function LPRPage() {
 
         {data.length > 0 && !isProcessingImages && (
           <div className="p-2 bg-muted/50 rounded-lg flex flex-col md:flex-row justify-between items-center gap-2 sticky top-4 z-10 border">
-            {/* Seção de Filtros */}
             <div className="flex flex-col md:flex-row items-center gap-2 w-full md:w-auto">
               <div className="relative w-full md:w-auto">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
@@ -994,7 +973,6 @@ export default function LPRPage() {
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="pl-10 h-9 w-full md:w-[200px] lg:w-[250px]"
-                  aria-label="Pesquisa global"
                 />
               </div>
               <DropdownMenu>
@@ -1123,7 +1101,6 @@ export default function LPRPage() {
                 </Popover>
             </div>
             
-            {/* Seção de Ações */}
             <div className="flex items-center gap-2 w-full md:w-auto justify-end">
               <Button onClick={() => { setIsMapOpen(true); setMapKey(Date.now());}} disabled={availableData.length === 0} variant="outline" size="sm" >
                 <MapIcon className="mr-2 h-4 w-4" />
@@ -1274,12 +1251,11 @@ export default function LPRPage() {
                     className="w-auto h-auto max-w-full max-h-full object-contain rounded-lg transition-transform duration-200"
                     style={{
                       transform: `translate(${position.x}px, ${position.y}px) scale(${zoom})`,
-                      transformOrigin: 'top left',
+                      transformOrigin: '0 0',
                     }}
                     unoptimized
                     onError={(e) => {
                       e.currentTarget.src = 'https://placehold.co/800x800.png'
-                      e.currentTarget.dataset.aiHint = "broken image";
                       if (selectedItem) {
                         setSelectedItem({...selectedItem, "Image URL": 'https://placehold.co/800x800.png' });
                       }
@@ -1290,7 +1266,7 @@ export default function LPRPage() {
                 <Button variant="secondary" size="icon" onClick={() => setZoom(z => Math.max(0.5, z-0.2))}>
                   <ZoomOut />
                 </Button>
-                <Button variant="secondary" size="icon" onClick={() => setZoom(z => Math.min(5, z+0.2))}>
+                <Button variant="secondary" size="icon" onClick={() => setZoom(z => Math.min(10, z+0.2))}>
                   <ZoomIn />
                 </Button>
                 <Button variant="secondary" size="icon" onClick={handleResetZoom}>
@@ -1303,7 +1279,7 @@ export default function LPRPage() {
                 </Button>
             </div>
              <div className="flex-shrink-0 p-4 bg-muted/50 rounded-b-lg mt-2 space-y-2">
-                <p className="text-center text-2xl font-bold text-white tracking-wider" style={{ textShadow: '2px 2px 4px rgba(0,0,0,0.8)' }}>
+                <p className="text-center text-3xl font-bold text-white tracking-wider" style={{ textShadow: '2px 2px 4px rgba(0,0,0,0.8)' }}>
                     {selectedItem["License Plate"] || 'Placa não informada'}
                 </p>
                 <div className="text-sm text-muted-foreground grid grid-cols-2 gap-x-4 gap-y-1 mt-2">
@@ -1335,7 +1311,3 @@ export default function LPRPage() {
     </div>
   );
 }
-
-    
-
-    
